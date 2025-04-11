@@ -1,0 +1,4 @@
+/ => home page
+/network => network analysis page (public)
+/sign-in => sign-in page (public)
+/sign-up => sign-up page (public)
