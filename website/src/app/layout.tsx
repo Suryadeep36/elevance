@@ -77,9 +77,10 @@ export default function RootLayout({
       <html lang='en' className={`${inter.variable} ${sora.variable} ${orbitron.variable} ${rajdhani.variable} scroll-smooth`}>
         <body className='antialiased'>
           <ThemeProvider attribute="class" defaultTheme="light">
-            <div className='min-h-screen flex flex-col'>
+            <div className='min-h-screen flex flex-col '>
               <Header />
               <main className='flex-grow'>{children}</main>
+              
               <Footer />
             </div>
           </ThemeProvider>

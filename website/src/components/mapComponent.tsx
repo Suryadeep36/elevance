@@ -1,205 +1,277 @@
-'use client';
+import React, { useRef, useEffect, useState } from 'react';
+import 'leaflet/dist/leaflet.css';
 
-import dynamic from 'next/dynamic';
-import { useEffect, useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, MapPin, Star, CircleDot } from 'lucide-react';
-
-// Dynamically import to avoid SSR issues
-const Globe = dynamic(() => import('react-globe.gl'), { ssr: false });
-
-interface User {
-  name: string;
-  title: string;
-  company: string;
-  skills: string[];
-  lat: number;
-  lon: number;
+interface UserMapProps {
+  users: any[];
+  selectedSkill: string;
+  selectedCompany: string;
+  selectedUser: any;
+  setSelectedUser: (user: any) => void;
+  viewMode: 'simple' | '3d';
 }
 
-interface GlobePoint {
-  lat: number;
-  lng: number;
-  size: number;
-  color: string;
-  name: string;
-  title: string;
-  company: string;
-  skills: string[];
-}
+const UserMap = ({ users, selectedSkill, selectedCompany, selectedUser, setSelectedUser, viewMode }: UserMapProps) => {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const [mapInitialized, setMapInitialized] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const mapInstanceRef = useRef<any>(null);
 
-export default function UserMap({ users, selectedSkill, selectedCompany }: {
-  users: User[],
-  selectedSkill: string,
-  selectedCompany: string
-}) {
-  const [points, setPoints] = useState<GlobePoint[]>([]);
-  const [hoveredPoint, setHoveredPoint] = useState<GlobePoint | null>(null);
-  const [selectedPoint, setSelectedPoint] = useState<GlobePoint | null>(null);
-  const [globeReady, setGlobeReady] = useState(false);
-
-  // Color scheme for different companies
-  const companyColors: Record<string, string> = {
-    'Google': '#4285F4',
-    'Microsoft': '#7FBA00',
-    'Apple': '#A3AAAE',
-    'Amazon': '#FF9900',
-    'Meta': '#1877F2',
-    'Netflix': '#E50914',
-    'default': '#FF6B6B'
-  };
-
+  // Cleanup previous map instance when component unmounts or view mode changes
   useEffect(() => {
-    const filtered = users.filter(user => {
-      const skillMatch = selectedSkill === '' || user.skills.includes(selectedSkill);
-      const companyMatch = selectedCompany === '' || user.company === selectedCompany;
-      return skillMatch && companyMatch;
-    });
+    return () => {
+      if (mapInstanceRef.current) {
+        try {
+          mapInstanceRef.current.remove();
+          mapInstanceRef.current = null;
+        } catch (e) {
+          console.error("Error cleaning up map:", e);
+        }
+      }
+    };
+  }, [viewMode]);
 
-    const formatted: GlobePoint[] = filtered.map(user => ({
-      lat: user.lat,
-      lng: user.lon,
-      size:0.05, 
-      color: companyColors[user.company] || companyColors['default'],
-      name: user.name,
-      title: user.title,
-      company: user.company,
-      skills: user.skills
-    }));
-
-    setPoints(formatted);
-    setSelectedPoint(null); // Reset selection when filters change
-  }, [users, selectedSkill, selectedCompany]);
-
-  // Custom HTML for tooltip
-  const getTooltip = (point: object) => {
-    const globePoint = point as GlobePoint;
-    return `
-      <div class="globe-tooltip bg-gray-900 text-white p-4 rounded-lg border border-gray-700 shadow-xl max-w-xs">
-        <div class="flex items-center gap-2 mb-2">
-          <div class="w-3 h-3 rounded-full" style="background: ${globePoint.color};"></div>
-          <h3 class="font-bold text-lg">${globePoint.name}</h3>
-        </div>
-        <p class="text-gray-300 mb-1">${globePoint.title}</p>
-        <p class="text-gray-400 mb-2">${globePoint.company}</p>
-        <div class="flex flex-wrap gap-1">
-          ${globePoint.skills.map(skill => `
-            <span class="text-xs px-2 py-1 rounded-full bg-gray-800 text-gray-200">
-              ${skill}
-            </span>
-          `).join('')}
-        </div>
-      </div>
-    `;
-  };
+  // Initialize map
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    // Reset map state when view mode changes
+    setMapInitialized(false);
+    setMapError(null);
+    
+    // Add base map styles
+    const addBaseMapStyles = () => {
+      const styleId = 'map-custom-styles';
+      let styleElement = document.getElementById(styleId);
+      
+      if (!styleElement) {
+        styleElement = document.createElement('style');
+        styleElement.id = styleId;
+        document.head.appendChild(styleElement);
+      }
+      
+      styleElement.innerHTML = `
+        .leaflet-container {
+          height: 100%;
+          width: 100%;
+          background-color: #1e1e1e;
+        }
+        .custom-marker {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 30px;
+          height: 30px;
+          background: linear-gradient(135deg, #4c1d95, #6d28d9);
+          border-radius: 50%;
+          color: white;
+          font-weight: bold;
+          border: 2px solid white;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        .selected-marker {
+          background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+          width: 35px;
+          height: 35px;
+        }
+        .map3d-marker {
+          transform: perspective(500px) rotateX(45deg);
+          box-shadow: 0 15px 15px -10px rgba(0, 0, 0, 0.5);
+        }
+        .map3d-container {
+          transform-style: preserve-3d;
+          perspective: 1200px;
+        }
+        .map3d-container .leaflet-map-pane {
+          transition: transform 0.3s ease;
+        }
+        .map3d-shadow {
+          position: absolute;
+          bottom: -10px;
+          left: calc(50% - 15px);
+          width: 30px;
+          height: 10px;
+          background: radial-gradient(ellipse at center, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0) 70%);
+          border-radius: 50%;
+        }
+      `;
+    };
+    
+    // Initialize map with selected view mode
+    const initializeMap = async () => {
+      try {
+        // Add base styles for the map
+        addBaseMapStyles();
+        
+        // Import Leaflet dynamically
+        const L = (await import('leaflet')).default;
+        
+        // Clear previous map instance if it exists
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.remove();
+          mapInstanceRef.current = null;
+        }
+        
+        // Make sure the map container exists
+        if (!mapRef.current) return;
+        
+        // Create map instance with appropriate options
+        const map = L.map(mapRef.current, {
+          center: [20.5937, 78.9629], // Centered on India
+          zoom: viewMode === '3d' ? 6 : 5,
+          scrollWheelZoom: true,
+        });
+        
+        // Choose tile layer based on view mode
+        if (viewMode === 'simple') {
+          // Simple view has a dark base map
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            maxZoom: 19,
+          }).addTo(map);
+        } else {
+          // 3D view has a satellite base map for more depth
+          L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+            maxZoom: 19,
+          }).addTo(map);
+          
+          // Add a subtle 3D effect to the map container
+          if (mapRef.current) {
+            mapRef.current.classList.add('map3d-container');
+          }
+        }
+        
+        // Add markers for filtered users
+        const filteredUsers = users.filter(user => {
+          const matchesSkill = !selectedSkill || user.skills.includes(selectedSkill);
+          const matchesCompany = !selectedCompany || user.company === selectedCompany;
+          return matchesSkill && matchesCompany;
+        });
+        
+        const markers = filteredUsers.map(user => {
+          const isSelected = selectedUser && selectedUser.name === user.name;
+          
+          // Create marker element with appropriate class based on view mode
+          const markerEl = document.createElement('div');
+          markerEl.className = `custom-marker ${isSelected ? 'selected-marker' : ''} ${viewMode === '3d' ? 'map3d-marker' : ''}`;
+          markerEl.innerHTML = user.name.split(' ').map((n: string) => n[0]).join('');
+          
+          // For 3D mode, add a shadow element
+          if (viewMode === '3d') {
+            const shadowEl = document.createElement('div');
+            shadowEl.className = 'map3d-shadow';
+            markerEl.appendChild(shadowEl);
+          }
+          
+          // Create the icon and marker
+          const icon = L.divIcon({
+            className: 'custom-map-marker', 
+            html: markerEl,
+            iconSize: [isSelected ? 35 : 30, isSelected ? 35 : 30],
+            iconAnchor: [isSelected ? 17 : 15, isSelected ? 17 : 15],
+          });
+          
+          // Add marker to map
+          return L.marker([user.lat, user.lon], { icon })
+            .addTo(map)
+            .bindPopup(`
+              <div class="p-2">
+                <div class="font-bold text-purple-600 mb-1">${user.name}</div>
+                <div class="text-sm">${user.title}</div>
+                <div class="text-xs text-gray-700">${user.company}</div>
+              </div>
+            `)
+            .on('click', () => {
+              setSelectedUser(user);
+            });
+        });
+        
+        // Fit map to show all markers
+        if (markers.length > 0) {
+          const group = L.featureGroup(markers);
+          map.fitBounds(group.getBounds(), { padding: [50, 50] });
+        }
+        
+        // If there's a selected user, center the map on them
+        if (selectedUser) {
+          map.setView([selectedUser.lat, selectedUser.lon], viewMode === '3d' ? 8 : 7);
+        }
+        
+        // Store map reference and update state
+        mapInstanceRef.current = map;
+        setMapInitialized(true);
+        
+        // For 3D mode, add mouse movement effect
+        if (viewMode === '3d' && mapRef.current) {
+          const handleMouseMove = (e: MouseEvent) => {
+            if (!mapRef.current) return;
+            
+            const rect = mapRef.current.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // Calculate tilt based on mouse position
+            const tiltX = (((y / rect.height) * 2) - 1) * -5;
+            const tiltY = (((x / rect.width) * 2) - 1) * 5;
+            
+            // Apply tilt effect to map pane
+            const mapPane = mapRef.current.querySelector('.leaflet-map-pane');
+            if (mapPane) {
+              (mapPane as HTMLElement).style.transform = `rotateX(${tiltX}deg) rotateY(${tiltY}deg) translateZ(20px)`;
+            }
+          };
+          
+          mapRef.current.addEventListener('mousemove', handleMouseMove);
+          
+          // Reset effect when mouse leaves
+          mapRef.current.addEventListener('mouseleave', () => {
+            const mapPane = mapRef.current?.querySelector('.leaflet-map-pane');
+            if (mapPane) {
+              (mapPane as HTMLElement).style.transform = 'rotateX(0deg) rotateY(0deg) translateZ(0px)';
+            }
+          });
+          
+          // Cleanup
+          return () => {
+            mapRef.current?.removeEventListener('mousemove', handleMouseMove);
+            mapRef.current?.removeEventListener('mouseleave', () => {});
+          };
+        }
+      } catch (error) {
+        console.error('Error initializing map:', error);
+        setMapError(`Failed to initialize map: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    };
+    
+    // Initialize map
+    initializeMap();
+  }, [users, selectedSkill, selectedCompany, selectedUser, setSelectedUser, viewMode]);
 
   return (
-    <div className="relative h-[600px] w-full rounded-xl overflow-hidden border border-gray-700 shadow-2xl">
-      {/* Loading overlay */}
-      <AnimatePresence>
-        {!globeReady && (
-          <motion.div
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-            className="absolute inset-0 bg-gray-900 z-10 flex items-center justify-center"
-          >
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-              className="w-12 h-12 border-4 border-t-transparent border-purple-500 rounded-full"
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Globe visualization */}
-      <Globe
-        globeImageUrl="https://unpkg.com/three-globe/example/img/earth-night.jpg"
-        bumpImageUrl="https://unpkg.com/three-globe/example/img/earth-topology.png"
-        backgroundImageUrl="https://unpkg.com/three-globe/example/img/night-sky.png"
-        pointsData={points}
-        pointAltitude="size"
-        pointColor="color"
-        pointRadius={0.5}
-        pointResolution={16}
-        pointLabel={getTooltip}
-        onPointClick={point => setSelectedPoint(point as GlobePoint)}
-        onPointHover={point => setHoveredPoint(point as GlobePoint)}
-        pointsTransitionDuration={1000}
-        onGlobeReady={() => setGlobeReady(true)}
-        rendererConfig={{ antialias: true }}
-        animateIn={false}
-      />
-
-      {/* Selected point details panel */}
-      <AnimatePresence>
-        {selectedPoint && (
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            transition={{ type: 'spring', damping: 25 }}
-            className="absolute right-4 top-4 bg-gray-900/90 backdrop-blur-sm rounded-xl p-4 w-64 border border-gray-700 shadow-lg z-10"
-          >
-            <div className="flex items-start gap-3 mb-3">
-              <div 
-                className="w-4 h-4 rounded-full mt-1 flex-shrink-0" 
-                style={{ background: selectedPoint.color }}
-              />
-              <div>
-                <h3 className="font-bold text-lg">{selectedPoint.name}</h3>
-                <p className="text-sm text-gray-300">{selectedPoint.title}</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-2 text-sm mb-3">
-              <MapPin size={14} className="text-gray-400" />
-              <span className="text-gray-400">{selectedPoint.company}</span>
-            </div>
-
-            <div className="mb-3">
-              <h4 className="text-xs font-semibold text-gray-500 mb-1">SKILLS</h4>
-              <div className="flex flex-wrap gap-1">
-                {selectedPoint.skills.map((skill, i) => (
-                  <motion.span
-                    key={i}
-                    whileHover={{ scale: 1.05 }}
-                    className="text-xs px-2 py-1 rounded-full bg-gray-800 text-gray-200"
-                  >
-                    {skill}
-                  </motion.span>
-                ))}
-              </div>
-            </div>
-
-            <button 
-              onClick={() => setSelectedPoint(null)}
-              className="text-xs flex items-center gap-1 text-gray-400 hover:text-gray-200"
-            >
-              Close <ChevronRight size={14} />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Legend */}
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1 }}
-        className="absolute left-4 bottom-4 bg-gray-900/90 backdrop-blur-sm rounded-lg p-3 border border-gray-700 shadow-lg z-10"
-      >
-        <h4 className="text-xs font-semibold text-gray-400 mb-2">COMPANY LEGEND</h4>
-        <div className="space-y-2">
-          {Object.entries(companyColors).map(([company, color]) => (
-            <div key={company} className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full" style={{ background: color }} />
-              <span className="text-xs text-gray-300">{company}</span>
-            </div>
-          ))}
+    <>
+      {mapError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-800 bg-opacity-80 z-10 p-4">
+          <div className="bg-red-900/50 border border-red-500/50 p-4 rounded-lg max-w-md text-center">
+            <h3 className="text-lg font-semibold text-red-300 mb-2">Map Error</h3>
+            <p className="text-white">{mapError}</p>
+          </div>
         </div>
-      </motion.div>
-    </div>
+      )}
+      <div 
+        ref={mapRef} 
+        className="h-full w-full relative rounded-xl overflow-hidden" 
+      >
+        {!mapInitialized && !mapError && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50">
+            <div className="flex flex-col items-center">
+              <div className="w-10 h-10 border-4 border-t-purple-500 border-purple-200/20 rounded-full animate-spin mb-4"></div>
+              <p className="text-gray-300">Loading {viewMode === '3d' ? '3D' : 'simple'} map...</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
   );
-}
+};
+
+export default UserMap;

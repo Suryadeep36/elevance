@@ -122,7 +122,7 @@ def clean_resume_text(text):
     text = re.sub(r'\s+', ' ', text)
     return text.lower()
 
-def extract_skills_from_resume(resume_text, similarity_threshold=0.3):
+def extract_skills_from_resume(resume_text, similarity_threshold=0.4):
     resume_text = clean_resume_text(resume_text)
     phrases = re.split(r'[\n,.;:]', resume_text)
     phrases = [phrase.strip() for phrase in phrases if len(phrase.strip()) >= 2]
@@ -319,6 +319,7 @@ async def recommend_jobs(skills: List[str]):
 async def jobs_analysis():
     df = pd.read_csv("ai_job_market_insights.csv")
     """Endpoint to return processed data for frontend"""
+    df=pd.read_csv("ai_job_market_insights.csv")
     salary_by_title = df.groupby("Job_Title", as_index=False)["Salary_USD"].mean().sort_values(by="Salary_USD", ascending=False).to_dict('records')
     industry_distribution = df["Industry"].value_counts().reset_index().rename(columns={"count": "value"}).to_dict('records')
     
@@ -341,3 +342,158 @@ def handle_query(request: QueryRequest):
 @app.get("/")
 async def root():
     return {"message": "Career and Certificate Verification API"}
+    
+# --career recommandation
+
+coursera_df = pd.read_csv("Coursera.csv")
+roles = [
+    {"title": "AI Engineer", "description": "Develops AI models and ML pipelines for automation and smart applications.",
+     "skills": ["Python", "TensorFlow", "Machine Learning", "Deep Learning", "PyTorch", "Scikit-learn"]},
+
+    {"title": "Data Scientist", "description": "Performs advanced statistical analysis and builds predictive models.",
+     "skills": ["Python", "R", "Statistics", "Machine Learning", "Pandas", "Matplotlib", "SQL"]},
+
+    {"title": "Data Analyst", "description": "Analyzes data trends, creates reports, and builds dashboards.",
+     "skills": ["SQL", "Excel", "Tableau", "Statistics", "Power BI", "Python"]},
+
+    {"title": "Web Developer", "description": "Builds and maintains websites and web apps using front and back-end tech.",
+     "skills": ["HTML", "CSS", "JavaScript", "React", "Node.js", "Express.js", "MongoDB"]},
+
+    {"title": "Frontend Developer", "description": "Creates interactive user interfaces and optimizes user experiences.",
+     "skills": ["HTML", "CSS", "JavaScript", "React", "Vue.js", "TypeScript", "Figma"]},
+
+    {"title": "Backend Developer", "description": "Develops server-side logic and integrates with databases.",
+     "skills": ["Node.js", "Express", "Django", "Flask", "SQL", "MongoDB", "Python", "Java"]},
+
+    {"title": "DevOps Engineer", "description": "Manages CI/CD pipelines, infrastructure automation, and deployments.",
+     "skills": ["Docker", "Kubernetes", "CI/CD", "AWS", "Terraform", "Linux", "Jenkins"]},
+
+    {"title": "Cloud Engineer", "description": "Designs and maintains cloud infrastructure and services.",
+     "skills": ["AWS", "Azure", "Google Cloud", "Terraform", "CloudFormation", "Python"]},
+
+    {"title": "Cybersecurity Analyst", "description": "Protects systems from attacks and monitors suspicious activity.",
+     "skills": ["Networking", "Linux", "Python", "Security Tools", "Penetration Testing", "Firewalls"]},
+
+    {"title": "Mobile App Developer", "description": "Builds apps for Android and iOS platforms.",
+     "skills": ["Kotlin", "Swift", "React Native", "Flutter", "Java", "Dart", "Firebase"]},
+
+    {"title": "Game Developer", "description": "Creates video games for different platforms.",
+     "skills": ["Unity", "C#", "Unreal Engine", "C++", "3D Modeling", "Game Design"]},
+
+    {"title": "Blockchain Developer", "description": "Develops decentralized applications and smart contracts.",
+     "skills": ["Solidity", "Ethereum", "Web3.js", "Smart Contracts", "Cryptography", "Rust"]},
+
+    {"title": "Machine Learning Engineer", "description": "Designs ML systems and productionizes models.",
+     "skills": ["Scikit-learn", "TensorFlow", "Keras", "ML Ops", "Python", "Pandas", "Airflow"]},
+
+    {"title": "NLP Engineer", "description": "Focuses on text-based AI like chatbots, translation, sentiment analysis.",
+     "skills": ["SpaCy", "NLTK", "Hugging Face Transformers", "BERT", "Text Classification", "Python"]},
+
+    {"title": "Robotics Engineer", "description": "Builds robotic systems using software and hardware integration.",
+     "skills": ["ROS", "C++", "Python", "Sensors", "Actuators", "Embedded Systems"]},
+
+    {"title": "Embedded Systems Engineer", "description": "Develops software for embedded devices like microcontrollers.",
+     "skills": ["C", "C++", "Assembly", "RTOS", "Microcontrollers", "I2C", "SPI"]},
+
+    {"title": "Systems Administrator", "description": "Maintains server infrastructure and IT systems.",
+     "skills": ["Linux", "Bash", "Networking", "Firewalls", "System Monitoring", "VMware"]},
+
+    {"title": "Database Administrator", "description": "Maintains and optimizes databases for performance and reliability.",
+     "skills": ["SQL", "Oracle", "MySQL", "PostgreSQL", "Backup & Recovery", "Database Tuning"]},
+
+    {"title": "Full Stack Developer", "description": "Works on both frontend and backend parts of applications.",
+     "skills": ["JavaScript", "React", "Node.js", "MongoDB", "HTML", "CSS", "Python", "Express.js"]},
+
+    {"title": "UI/UX Designer", "description": "Designs intuitive user interfaces and experiences.",
+     "skills": ["Figma", "Adobe XD", "User Research", "Wireframing", "Prototyping", "Sketch"]}
+]
+
+df_roles = pd.DataFrame(roles)
+model = SentenceTransformer('all-MiniLM-L6-v2')
+
+coursera_df = pd.read_csv("Coursera.csv")
+
+class UserProfile(BaseModel):
+    name: str
+    current_skills: List[str]
+    desired_skills: List[str]
+    level: str  # Beginner | Intermediate | Advanced | Expert
+    experience_years: float
+    education: str
+ 
+
+class RecommendedCourse(BaseModel):
+    course: str
+    skills: str
+    rating: float
+    reviewcount: str
+    duration: str
+    similarity: float
+
+class CareerRecommendation(BaseModel):
+    career_role: str
+    match_score: float
+    recommended_courses: List[RecommendedCourse]
+
+class RecommendationResponse(BaseModel):
+    recommended_careers: List[CareerRecommendation]
+
+@app.post("/recommend-career-path", response_model=RecommendationResponse)
+def recommend_career_path(desired_skils : List[str]):
+        # Step 1: Recommend career roles based on desired skills
+        user_input = desired_skils
+        role_texts = [role['title'] + " " + role['description'] + " " + " ".join(role['skills']) for role in roles]
+        role_embeddings = model.encode(role_texts)
+        user_embedding = model.encode([user_input])
+        similarities = cosine_similarity(user_embedding, role_embeddings)[0]
+        
+        df_roles["match_score"] = similarities
+        df_roles_sorted = df_roles.sort_values(by="match_score", ascending=False).reset_index(drop=True)
+        df_rec_course = df_roles_sorted.head(5)  # Get top 5 roles
+        
+        # Step 2: Get course recommendations for each role
+        recommendations = []
+        for _, role in df_rec_course.iterrows():
+            role_skills = [s.strip() for s in role["skills"]]
+            role_skill_embeddings = model.encode(role_skills)
+            
+            recommended_courses = []
+            for _, course in coursera_df.iterrows():
+                course_skills = str(course["skills"]).split(",")
+                course_skills_cleaned = [s.strip() for s in course_skills]
+                
+                if not course_skills_cleaned:
+                    continue
+                
+                course_skill_embeddings = model.encode(course_skills_cleaned)
+                sim_matrix = cosine_similarity(role_skill_embeddings, course_skill_embeddings)
+                max_sim = sim_matrix.max()
+                
+                if max_sim >= 0.5:  # similarity threshold
+                    try:
+                        course_rating = float(course["rating"])
+                    except:
+                        course_rating = 0.0
+                    
+                    recommended_courses.append({
+                        "course": course["course"],
+                        "skills": course["skills"],
+                        "rating": course_rating,
+                        "reviewcount": course.get("reviewcount", "N/A"),
+                        "duration": course.get("duration", "N/A"),
+                        "similarity": round(float(max_sim), 3)
+                    })
+            
+            # Sort and get top 5 courses
+            sorted_courses = sorted(recommended_courses, 
+                                  key=lambda x: (x["similarity"], x["rating"]), 
+                                  reverse=True)[:5]
+            
+            recommendations.append({
+                "career_role": role["title"],
+                "match_score": float(role["match_score"]),
+                "recommended_courses": sorted_courses
+            })
+        
+        return {"recommended_careers": recommendations}
+    

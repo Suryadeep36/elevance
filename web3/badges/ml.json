@@ -1,0 +1,16 @@
+{
+    "name": "ML Badge",
+    "description": "Awarded for completing Machine Learning courses.",
+    "image": "https://aquamarine-urban-firefly-16.mypinata.cloud/ipfs/bafybeihe5xjhoxyygdxwhqcqljv6qrnqca6dyw56jwppnpxwlzaah2b3ny",
+    "skills": [
+        "Python",
+        "Scikit-learn",
+        "TensorFlow",
+        "PyTorch",
+        "Data Preprocessing",
+        "Model Training & Evaluation",
+        "Pandas",
+        "Numpy",
+        "Jupyter Notebooks"
+    ]
+}

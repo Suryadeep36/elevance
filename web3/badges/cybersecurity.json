@@ -1,0 +1,15 @@
+{
+    "name": "Cybersecurity Badge",
+    "description": "Awarded for completing Cybersecurity courses.",
+    "image": "https://aquamarine-urban-firefly-16.mypinata.cloud/ipfs/bafybeihyghxsuwf5f6yssa2gkf477dkegbqpubq2qovvdbcwbambbwcpkq",
+    "skills": [
+      "Network Security",
+      "Penetration Testing",
+      "Threat Detection",
+      "Firewalls",
+      "IDS",
+      "Ethical Hacking",
+      "Security Protocols"
+    ]
+  }
+  

@@ -43,7 +43,7 @@ export default function Page() {
     try {
       const formData = new FormData();
       formData.append("certificate", files[0]);
-      formData.append("name", "Devan");
+      formData.append("name", "Manil");
 
       const response = await axios.post<VerificationResult>(
         "http://localhost:8000/verify-certificate",

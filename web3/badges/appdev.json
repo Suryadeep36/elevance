@@ -1,0 +1,17 @@
+{
+    "name": "App Dev Badge",
+    "description": "Awarded for completing App Development courses.",
+    "image": "https://aquamarine-urban-firefly-16.mypinata.cloud/ipfs/bafybeicn26poavzih5ppy6ohmrno4zdv5xkoojf5a3m5wv2jap5jbs5aqm",
+    "skills": [
+      "Android Development",
+      "iOS Development",
+      "Kotlin",
+      "Swift",
+      "Flutter",
+      "React Native",
+      "Mobile UI/UX",
+      "Firebase",
+      "App Deployment"
+    ]
+  }
+  
