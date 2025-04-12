@@ -1,5 +1,6 @@
+"use client"
 import React from 'react';
-import Spline from '@splinetool/react-spline/next';
+import Spline from '@splinetool/react-spline';
 
 const SplineScene: React.FC = () => {
   return (

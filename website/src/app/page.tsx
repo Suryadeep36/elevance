@@ -1,8 +1,11 @@
+"use client"
 import SplineScene from "@/components/Animation";
-import AssetAnimation from "@/components/AssetAnimation";
 import Brain from "@/components/Brain";
 import MovingGlobe from "@/components/MovingGlobe"; 
 import GrowGraph from "@/components/growGraph";
+import { useState, useEffect } from "react";
+
+
 export default function Home() {
   return (
     <main className="relative w-full min-h-screen overflow-x-hidden bg-blue-950">
