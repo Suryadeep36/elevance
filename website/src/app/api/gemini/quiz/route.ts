@@ -32,11 +32,11 @@ export async function POST(req: NextRequest) {
         let jsonString = responseText.trim();
         
         // Remove Markdown code blocks if present
-        if (jsonString.startsWith('```json')) {
-            jsonString = jsonString.slice(7); // Remove ```json
+        if (jsonString.startsWith('json')) {
+            jsonString = jsonString.slice(7); // Remove json
         }
-        if (jsonString.endsWith('```')) {
-            jsonString = jsonString.slice(0, -3); // Remove ```
+        if (jsonString.endsWith('')) {
+            jsonString = jsonString.slice(0, -3); // Remove 
         }
         
         // Parse the JSON
