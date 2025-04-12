@@ -1,19 +1,28 @@
 import axios from "axios";
 import { motion } from "framer-motion";
-import { User, Briefcase, Search, Code, X, Award, BookOpen, Sparkles, Zap } from "lucide-react";
+import { User, Briefcase, Search, Code, X, Award, BookOpen, Sparkles, Zap, Calendar, MapPin, UserCog, Edit3 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useUser, useAuth } from "@clerk/nextjs";
+import { toast } from "react-hot-toast";
 
 interface ProfileData {
+  _id?: string;
+  clerk_Id?: string;
   name: string;
   email: string;
   dob: string;
   location: string;
-  resume: null | { name: string; size: number; type: string; lastModified: number };
+  role: string;
+  resume: null | { name: string; size: number; type: string; lastModified: number } | string;
   photo: null | string;
+  profileImage: null | string;
   experience: { id: number; company: string; position: string; duration: string; isEditing?: boolean }[];
   jobs: Array<{ id: number; title: string; company: string; location: string }>;
   skills: string[];
+  courses?: string[];
+  certificates?: string[];
+  badges?: string[];
+  atsScore?: number;
 }
 
 const defaultProfileData: ProfileData = {
@@ -21,8 +30,10 @@ const defaultProfileData: ProfileData = {
   email: "abc@gmail.com",
   dob: "not added",
   location: "San Francisco, CA",
+  role: "USER",
   resume: null,
   photo: null,
+  profileImage: null,
   experience: [
     { id: 1, company: "TechCorp", position: "Senior Developer", duration: "2019-2023" },
   ],
@@ -38,47 +49,84 @@ export default function ProfilePage() {
   const [newSkill, setNewSkill] = useState("");
   const [profileData, setProfileData] = useState<ProfileData>(defaultProfileData);
   const [isClient, setIsClient] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
 
+  // For role editing dropdown
+  const [showRoleDropdown, setShowRoleDropdown] = useState(false);
+  
   const { isLoaded, user } = useUser();
   const { isSignedIn } = useAuth();
 
-  const fetchUserData = () => {
-    profileData.name = (user?.firstName + " " + user?.lastName) || "user";
-    profileData.photo = user?.imageUrl || "/favicon.png";
-    profileData.email = user?.primaryEmailAddress?.emailAddress || "no-email@example.com";
+  // Fetch user data from MongoDB API
+  const fetchUserData = async () => {
+    if (!isLoaded || !isSignedIn || !user?.id) return;
+    
+    try {
+      setIsLoading(true);
+      // Fix the API endpoint call
+      const response = await axios.get(`/api/user/${user.id}`);
+      
+      if (response.data && response.data.user) {
+        // Transform the MongoDB data to match our component's data structure
+        const userData = {
+          ...defaultProfileData,
+          ...response.data.user,
+          name: response.data.user.name || user?.fullName || "User",
+          email: response.data.user.email || user?.primaryEmailAddress?.emailAddress || "no-email@example.com",
+          photo: response.data.user.profileImage || user?.imageUrl || "/favicon.png",
+          profileImage: response.data.user.profileImage || user?.imageUrl || "/favicon.png",
+        };
+        
+        setProfileData(userData);
+        
+        // Also set user type if available
+        if (response.data.user.role === "RECRUITER") {
+          setUserType("recruiter");
+        } else {
+          setUserType("employee"); // Default to employee
+        }
+      } else {
+        // If we couldn't get user data from MongoDB, use defaults with Clerk data
+        setProfileData({
+          ...defaultProfileData,
+          name: user?.fullName || "User",
+          email: user?.primaryEmailAddress?.emailAddress || "no-email@example.com",
+          photo: user?.imageUrl || "/favicon.png",
+          profileImage: user?.imageUrl || "/favicon.png",
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+      // Fallback to Clerk data if API fails
+      setProfileData({
+        ...defaultProfileData,
+        name: user?.fullName || "User",
+        email: user?.primaryEmailAddress?.emailAddress || "no-email@example.com",
+        photo: user?.imageUrl || "/favicon.png",
+        profileImage: user?.imageUrl || "/favicon.png",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  fetchUserData();
+  useEffect(() => {
+    if (isSignedIn && isLoaded) {
+      fetchUserData();
+    }
+  }, [isSignedIn, isLoaded, user?.id]);
 
   useEffect(() => {
-    if (!isLoaded) {
-      return;
-    }
     setIsClient(true);
+    
+    // Load user type from localStorage as a backup
     const savedUserType = localStorage.getItem("userType") || "";
-    setUserType(savedUserType);
-
-    const savedData = localStorage.getItem("profileData");
-    if (savedData) {
-      try {
-        const parsedData = JSON.parse(savedData);
-        if (!Array.isArray(parsedData.skills)) {
-          parsedData.skills = [];
-        }
-        setProfileData(parsedData);
-      } catch (error) {
-        console.error("Error parsing profile data:", error);
-        setProfileData(defaultProfileData);
-      }
+    if (!userType && savedUserType) {
+      setUserType(savedUserType);
     }
   }, []);
-
-  useEffect(() => {
-    if (isClient) {
-      localStorage.setItem("profileData", JSON.stringify(profileData));
-    }
-    console.log("Updated skills:", profileData.skills);
-  }, [profileData, isClient]);
 
   useEffect(() => {
     if (isClient && userType) {
@@ -86,12 +134,195 @@ export default function ProfilePage() {
     }
   }, [userType, isClient]);
 
-  const handleInputChange = (field: string, value: string | object) => {
+  // Function to save data to MongoDB
+  const saveUserData = async (data: Partial<ProfileData>) => {
+    if (!isSignedIn || !user?.id) return;
+    
+    try {
+      const response = await axios.put(`/api/user/update`, {
+        clerk_Id: user.id,
+        ...data
+      });
+      
+      if (response.data && response.data.success) {
+        toast.success("Profile updated successfully!");
+        return true;
+      } else {
+        toast.error("Failed to update profile.");
+        return false;
+      }
+    } catch (error) {
+      console.error("Error updating user data:", error);
+      toast.error("Error updating profile. Please try again.");
+      return false;
+    }
+  };
+
+  // Start editing a field
+  const startEditing = (field: string, currentValue: string) => {
+    setEditingField(field);
+    setEditValue(currentValue);
+  };
+
+  // Cancel editing
+  const cancelEditing = () => {
+    setEditingField(null);
+    setEditValue("");
+  };
+
+  // Save edited field - Fix to ensure MongoDB update works
+  const saveEditing = async () => {
+    if (!editingField) return;
+    
+    try {
+      toast.loading("Updating...");
+      
+      // Create update object
+      const updateData = { [editingField]: editValue };
+      
+      // Save to MongoDB first to ensure it works
+      const saveResult = await saveUserData(updateData);
+      
+      if (saveResult) {
+        // Only update local state if MongoDB update was successful
+        setProfileData((prev: ProfileData) => ({
+          ...prev,
+          ...updateData
+        }));
+        toast.dismiss();
+        toast.success(`${editingField.charAt(0).toUpperCase() + editingField.slice(1)} updated successfully!`);
+      } else {
+        toast.dismiss();
+        toast.error("Failed to update. Please try again.");
+      }
+    } catch (error) {
+      toast.dismiss();
+      toast.error("An error occurred while updating.");
+      console.error("Error while editing field:", error);
+    } finally {
+      setEditingField(null);
+      setEditValue("");
+    }
+  };
+
+  const handleInputChange = async (field: string, value: string | object) => {
     setProfileData((prev: ProfileData) => {
       const newData: ProfileData = { ...prev, [field]: value };
       return newData;
     });
+    
+    // Save to MongoDB
+    await saveUserData({ [field]: value });
   };
+
+  // Edit field component
+  const EditableField = ({ 
+    field, 
+    value, 
+    label, 
+    icon: Icon,
+    isEditing,
+    isDate = false
+  }: { 
+    field: string; 
+    value: string; 
+    label: string;
+    icon: React.ElementType;
+    isEditing: boolean;
+    isDate?: boolean;
+  }) => (
+    <div className="flex items-center gap-3">
+      <div className="p-2 bg-purple-900/20 rounded-lg">
+        <Icon className="w-5 h-5 text-purple-400" />
+      </div>
+      <div className="flex-1">
+        <h3 className="text-sm font-medium text-gray-300">{label}</h3>
+        {isEditing ? (
+          <div className="flex mt-1">
+            {isDate ? (
+              <input
+                type="date"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-700 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                autoFocus
+              />
+            ) : field === "role" ? (
+              <div className="relative w-full">
+                <button 
+                  className="w-full bg-gray-800 border border-gray-700 rounded-md p-2 text-left text-white text-sm flex justify-between items-center"
+                  onClick={() => setShowRoleDropdown(!showRoleDropdown)}
+                >
+                  {editValue}
+                  <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {showRoleDropdown && (
+                  <div className="absolute z-10 w-full mt-1 bg-gray-800 border border-gray-700 rounded-md shadow-lg">
+                    <div 
+                      className="p-2 hover:bg-gray-700 cursor-pointer"
+                      onClick={() => {
+                        setEditValue("USER");
+                        setShowRoleDropdown(false);
+                      }}
+                    >
+                      USER
+                    </div>
+                    <div 
+                      className="p-2 hover:bg-gray-700 cursor-pointer"
+                      onClick={() => {
+                        setEditValue("RECRUITER");
+                        setShowRoleDropdown(false);
+                      }}
+                    >
+                      RECRUITER
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <input
+                type="text"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-700 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                autoFocus
+              />
+            )}
+            <div className="flex ml-2">
+              <button 
+                className="text-green-500 hover:text-green-400 mr-2"
+                onClick={saveEditing}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </button>
+              <button 
+                className="text-red-500 hover:text-red-400"
+                onClick={cancelEditing}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center">
+            <p className="text-white font-semibold">{value}</p>
+            <button 
+              onClick={() => startEditing(field, value)}
+              className="ml-2 p-1 hover:bg-gray-700 rounded-full"
+            >
+              <Edit3 size={16} className="text-gray-400 hover:text-purple-400" />
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   interface FileUploadEvent extends React.ChangeEvent<HTMLInputElement> {
     target: HTMLInputElement & { files: FileList | null };
@@ -104,14 +335,14 @@ export default function ProfilePage() {
     lastModified: number;
   }
 
-  const handleFileUpload = (field: "photo" | "resume", e: FileUploadEvent): void => {
+  const handleFileUpload = (field: "photo" | "profileImage" | "resume", e: FileUploadEvent): void => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (field === "photo") {
+    if (field === "photo" || field === "profileImage") {
       const reader = new FileReader();
       reader.onload = (event: ProgressEvent<FileReader>) => {
-        handleInputChange("photo", event.target?.result as string);
+        handleInputChange(field, event.target?.result as string);
       };
       reader.readAsDataURL(file);
     } else if (field === "resume") {
@@ -133,12 +364,18 @@ export default function ProfilePage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const formData = new FormData();
-    formData.append("file", file);
-
     try {
-      const api = await axios.post<SkillsResponse>(
-        "http://localhost:8000/extract-skills",
+      // First, display loading state
+      const loadingToast = toast.loading("Processing resume...");
+      
+      // Create form data for file upload
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("clerk_Id", user?.id || "");
+      
+      // Upload to Cloudinary through our API
+      const uploadResponse = await axios.post(
+        "/api/resume-upload", 
         formData,
         {
           headers: {
@@ -146,60 +383,129 @@ export default function ProfilePage() {
           },
         }
       );
-
-      if (api.data?.extracted_skills) {
-        const currentSkills = Array.isArray(profileData.skills) ? profileData.skills : [];
-        const newSkills = Array.isArray(api.data.extracted_skills) ? api.data.extracted_skills : [];
-
+      
+      if (!uploadResponse.data?.success) {
+        toast.dismiss(loadingToast);
+        throw new Error("Resume upload failed");
+      }
+      
+      // Get the cloudinary URL from the response
+      const resumeUrl = uploadResponse.data.url;
+      console.log("Resume uploaded to:", resumeUrl);
+      
+      // Extract skills from resume using the Python model
+      try {
+        const skillsResponse = await axios.post<SkillsResponse>(
+          "http://localhost:8000/extract-skills",
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+  
+        if (skillsResponse.data?.extracted_skills) {
+          const currentSkills = Array.isArray(profileData.skills) ? profileData.skills : [];
+          const newSkills = Array.isArray(skillsResponse.data.extracted_skills) 
+            ? skillsResponse.data.extracted_skills 
+            : [];
+  
+          // Log extracted skills
+          console.log("Extracted skills:", newSkills);
+  
+          // Combine existing and new skills, removing duplicates
+          const updatedSkills = [...new Set([...currentSkills, ...newSkills])];
+          
+          // Save resume URL and skills to MongoDB
+          const saveResult = await saveUserData({
+            resume: resumeUrl,
+            skills: updatedSkills,
+          });
+  
+          if (saveResult) {
+            // Update local state only if MongoDB update was successful
+            setProfileData((prev) => ({
+              ...prev,
+              resume: resumeUrl,
+              skills: updatedSkills,
+            }));
+            toast.dismiss(loadingToast);
+            toast.success("Resume uploaded and skills extracted successfully!");
+          } else {
+            toast.dismiss(loadingToast);
+            toast.error("Resume uploaded but failed to save skills.");
+          }
+        } else {
+          // If no skills were extracted but resume was uploaded
+          await saveUserData({ resume: resumeUrl });
+          setProfileData((prev) => ({
+            ...prev,
+            resume: resumeUrl,
+          }));
+          toast.dismiss(loadingToast);
+          toast.warning("Resume uploaded but no skills were extracted.");
+        }
+      } catch (skillsError) {
+        // If skills extraction fails, still save the resume URL
+        console.error("Error extracting skills:", skillsError);
+        await saveUserData({ resume: resumeUrl });
         setProfileData((prev) => ({
           ...prev,
-          skills: [...new Set([...currentSkills, ...newSkills])],
+          resume: resumeUrl,
         }));
-        console.log(profileData.skills);
-      } else {
-        throw new Error("No skills were extracted from the resume");
+        toast.dismiss(loadingToast);
+        toast.warning("Resume uploaded but skills extraction failed.");
       }
-
-      const uploadedFile: UploadedFile = {
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        lastModified: file.lastModified,
-      };
-      handleInputChange("resume", uploadedFile);
     } catch (err) {
-      console.error("Error extracting skills:", err);
-      alert(err instanceof Error ? err.message : "Failed to process resume");
+      toast.dismiss();
+      console.error("Error processing resume:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to process resume");
     }
   };
 
-  const addSkill = () => {
+  const addSkill = async () => {
     if (newSkill.trim() && !profileData.skills.includes(newSkill.trim())) {
+      const updatedSkills = [...(Array.isArray(profileData.skills) ? profileData.skills : []), newSkill.trim()];
+      
       setProfileData((prev) => ({
         ...prev,
-        skills: [...(Array.isArray(prev.skills) ? prev.skills : []), newSkill.trim()],
+        skills: updatedSkills,
       }));
+      
+      // Save to MongoDB
+      await saveUserData({ skills: updatedSkills });
       setNewSkill("");
     }
   };
 
-  const removeSkill = (skillToRemove: string) => {
+  const removeSkill = async (skillToRemove: string) => {
+    const updatedSkills = Array.isArray(profileData.skills)
+      ? profileData.skills.filter((skill) => skill !== skillToRemove)
+      : [];
+    
     setProfileData((prev) => ({
       ...prev,
-      skills: Array.isArray(prev.skills)
-        ? prev.skills.filter((skill) => skill !== skillToRemove)
-        : [],
+      skills: updatedSkills,
     }));
+    
+    // Save to MongoDB
+    await saveUserData({ skills: updatedSkills });
   };
 
-  const updateSkill = (oldSkill: string, newSkill: string) => {
+  const updateSkill = async (oldSkill: string, newSkill: string) => {
     if (newSkill.trim() && !profileData.skills.includes(newSkill.trim())) {
+      const updatedSkills = Array.isArray(profileData.skills)
+        ? profileData.skills.map((skill) => (skill === oldSkill ? newSkill.trim() : skill))
+        : [newSkill.trim()];
+      
       setProfileData((prev) => ({
         ...prev,
-        skills: Array.isArray(prev.skills)
-          ? prev.skills.map((skill) => (skill === oldSkill ? newSkill.trim() : skill))
-          : [newSkill.trim()],
+        skills: updatedSkills,
       }));
+      
+      // Save to MongoDB
+      await saveUserData({ skills: updatedSkills });
     }
   };
 
@@ -224,24 +530,50 @@ export default function ProfilePage() {
     }));
   };
 
-  const updateExperience = (
+  const updateExperience = async (
     id: number,
     updates: Partial<{ company: string; position: string; duration: string; isEditing?: boolean }>
   ) => {
+    const updatedExperience = profileData.experience.map((exp) =>
+      exp.id === id ? { ...exp, ...updates, isEditing: false } : exp
+    );
+    
     setProfileData((prev: ProfileData) => ({
       ...prev,
-      experience: prev.experience.map((exp) =>
-        exp.id === id ? { ...exp, ...updates, isEditing: false } : exp
-      ),
+      experience: updatedExperience,
     }));
+    
+    // Save to MongoDB
+    await saveUserData({ experience: updatedExperience });
   };
 
-  const deleteExperience = (id: number): void => {
+  const deleteExperience = async (id: number): Promise<void> => {
+    const updatedExperience = profileData.experience.filter((exp: { id: number }) => exp.id !== id);
+    
     setProfileData((prev: ProfileData) => ({
       ...prev,
-      experience: prev.experience.filter((exp: { id: number }) => exp.id !== id),
+      experience: updatedExperience,
     }));
+    
+    // Save to MongoDB
+    await saveUserData({ experience: updatedExperience });
   };
+
+  // View resume function
+  const viewResume = () => {
+    if (typeof profileData.resume === 'string') {
+      window.open(profileData.resume, '_blank');
+    }
+  };
+
+  if (isLoading) {
+    return <div className="bg-gray-900 text-gray-100 rounded-xl p-6 min-h-full flex items-center justify-center">
+      <div className="flex flex-col items-center">
+        <div className="w-12 h-12 border-4 border-t-purple-500 border-purple-200/20 rounded-full animate-spin mb-4"></div>
+        <p>Loading profile data...</p>
+      </div>
+    </div>;
+  }
 
   if (!isClient) {
     return <div className="bg-gray-900 text-gray-100 rounded-xl p-6 min-h-full">Loading...</div>;
@@ -285,13 +617,13 @@ export default function ProfilePage() {
             <div className="backdrop-blur-sm bg-white/5 rounded-2xl p-8 border border-gray-800 shadow-xl transform-gpu transition-all duration-300 hover:shadow-purple-900/20 h-full group perspective">
               <div className="transform-gpu group-hover:rotate-y-2 group-hover:scale-[1.01] transition-transform duration-500">
                 <div className="flex flex-col items-center mb-6 relative">
-                  {profileData.photo ? (
+                  {profileData.photo || profileData.profileImage ? (
                     <motion.div
                       whileHover={{ scale: 1.05 }}
                       transition={{ type: "spring", stiffness: 300, damping: 10 }}
                       className="w-36 h-36 rounded-full overflow-hidden border-4 border-purple-500/30 shadow-lg shadow-purple-900/20 mb-4"
                     >
-                      <img src={profileData.photo} alt="Profile" className="w-full h-full object-cover" />
+                      <img src={profileData.photo || profileData.profileImage as string} alt="Profile" className="w-full h-full object-cover" />
                     </motion.div>
                   ) : (
                     <div className="w-36 h-36 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center border-4 border-purple-500/30 shadow-lg shadow-purple-900/20 mb-4">
@@ -302,7 +634,7 @@ export default function ProfilePage() {
                           type="file"
                           className="hidden"
                           accept="image/*"
-                          onChange={(e) => handleFileUpload("photo", e)}
+                          onChange={(e) => handleFileUpload("profileImage", e)}
                         />
                       </label>
                     </div>
@@ -332,73 +664,38 @@ export default function ProfilePage() {
 
                 <div className="space-y-6">
                   <div className="backdrop-blur-md bg-white/5 rounded-xl p-4 border border-gray-700/50">
+                    {/* Role field */}
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="p-2 bg-purple-900/20 rounded-lg">
-                        <svg
-                          className="w-5 h-5 text-purple-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                          />
-                        </svg>
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-300">Date of Birth</h3>
-                        {profileData.dob !== "not added" ? (
-                          <p className="text-white font-semibold">{profileData.dob}</p>
-                        ) : (
-                          <input
-                            type="date"
-                            className="w-full bg-gray-800 border border-gray-700 rounded-md p-2 mt-1 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
-                            onChange={(e) => handleInputChange("dob", e.target.value)}
-                          />
-                        )}
-                      </div>
+                      <EditableField
+                        field="role"
+                        value={profileData.role || "USER"}
+                        label="Role"
+                        icon={UserCog}
+                        isEditing={editingField === "role"}
+                      />
                     </div>
 
+                    {/* DOB field */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <EditableField
+                        field="dob"
+                        value={profileData.dob !== "not added" ? profileData.dob : "Not specified"}
+                        label="Date of Birth"
+                        icon={Calendar}
+                        isEditing={editingField === "dob"}
+                        isDate={true}
+                      />
+                    </div>
+
+                    {/* Location field */}
                     <div className="flex items-center gap-3">
-                      <div className="p-2 bg-purple-900/20 rounded-lg">
-                        <svg
-                          className="w-5 h-5 text-purple-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                          />
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                          />
-                        </svg>
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-300">Location</h3>
-                        {profileData.location ? (
-                          <p className="text-white font-semibold">{profileData.location}</p>
-                        ) : (
-                          <input
-                            type="text"
-                            placeholder="City, Country"
-                            className="w-full bg-gray-800 border border-gray-700 rounded-md p-2 mt-1 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
-                            onChange={(e) => handleInputChange("location", e.target.value)}
-                          />
-                        )}
-                      </div>
+                      <EditableField
+                        field="location"
+                        value={profileData.location || "Not specified"}
+                        label="Location"
+                        icon={MapPin}
+                        isEditing={editingField === "location"}
+                      />
                     </div>
                   </div>
 
@@ -421,12 +718,16 @@ export default function ProfilePage() {
                       Resume
                     </label>
 
-                    {profileData.resume && (
+                    {/* Show view button if resume exists */}
+                    {typeof profileData.resume === 'string' && profileData.resume && (
                       <div className="flex items-center justify-between mb-2 bg-gray-800/50 p-2 rounded-lg">
                         <span className="text-gray-300 truncate flex-1 text-sm">
-                          {profileData.resume.name}
+                          Resume uploaded
                         </span>
-                        <button className="text-purple-400 hover:text-purple-300 text-xs px-2 py-1 rounded bg-purple-900/30">
+                        <button 
+                          onClick={viewResume}
+                          className="text-purple-400 hover:text-purple-300 text-xs px-2 py-1 rounded bg-purple-900/30"
+                        >
                           View
                         </button>
                       </div>
@@ -451,7 +752,7 @@ export default function ProfilePage() {
                           </svg>
                         </div>
                         <span className="text-gray-400 text-sm">
-                          {profileData.resume ? "Update Resume" : "Upload Resume"}
+                          {typeof profileData.resume === 'string' && profileData.resume ? "Update Resume" : "Upload Resume"}
                         </span>
                         <p className="text-gray-500 text-xs mt-1">PDF, DOC or DOCX</p>
                       </div>
@@ -468,6 +769,7 @@ export default function ProfilePage() {
             </div>
           </motion.div>
 
+          {/* Rest of the profile UI components */}
           <motion.div
             className="lg:col-span-8 space-y-6"
             initial={{ opacity: 0, x: 50 }}
