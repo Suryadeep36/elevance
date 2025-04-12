@@ -143,6 +143,7 @@ def extract_text_from_pdf(file_bytes):
 
 @app.post("/extract-skills")
 async def extract_skills(file: UploadFile = File(...)):
+    print(file)
     if file.content_type != "application/pdf":
         return JSONResponse(status_code=400, content={"error": "Only PDF files are supported."})
 
@@ -241,7 +242,7 @@ async def recommend_jobs(skills: List[str]):
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 # Load the data
-df = pd.read_csv("ai_job_market_insights.csv")
+
 
 
 @app.get("/job-analysis")
