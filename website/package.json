@@ -33,6 +33,7 @@
     "react-dom": "^19.0.0",
     "react-globe.gl": "^2.33.2",
     "react-leaflet": "^5.0.0",
+    "react-markdown": "^10.1.0",
     "react-plotly.js": "^2.6.0",
     "react-plotlyjs": "^0.4.4",
     "recharts": "^2.15.2",
