@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { NextRequest } from 'next/server';
 import { v2 as cloudinary } from 'cloudinary';
 import { auth } from '@clerk/nextjs/server';
-
+import { clerkClient } from '@clerk/express'
 cloudinary.config({
     cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
@@ -69,10 +69,21 @@ export async function POST(request: NextRequest) {
                 uploadStream.end(buffer);
             }
         );
+        const pdfUrl = result.secure_url;
+        const jpegUrl = pdfUrl.replace(".pdf", ".jpeg");
         
+        const combinedUrl = `${jpegUrl}`;
+        
+        console.log(combinedUrl)
+        await clerkClient.users.updateUserMetadata(userId, {
+            privateMetadata: {
+              resume_url : combinedUrl,
+            },
+          })
+
         return NextResponse.json({
             publicId: result.public_id,
-            url: result.secure_url,
+            url: combinedUrl,
             success: true
         }, { status: 200 });
     } catch (error) {
