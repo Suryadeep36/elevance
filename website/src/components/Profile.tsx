@@ -1,10 +1,12 @@
 import axios from "axios";
 import { motion } from "framer-motion";
 import { User, Briefcase, Search, Code, X } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
+import {useUser, useAuth} from "@clerk/nextjs";
 
 interface ProfileData {
   name: string;
+  email: string;
   dob: string;
   location: string;
   resume: null | { name: string; size: number; type: string; lastModified: number };
@@ -16,8 +18,9 @@ interface ProfileData {
 
 // Default profile data
 const defaultProfileData: ProfileData = {
-  name: 'Alex Morgan',
-  dob: '1992-05-15',
+  name: 'user',
+  email: 'abc@gmail.com',
+  dob: 'not added',
   location: 'San Francisco, CA',
   resume: null,
   photo: null,
@@ -36,13 +39,25 @@ export default function ProfilePage() {
   const [userType, setUserType] = useState('');
   const [newSkill, setNewSkill] = useState('');
   const [profileData, setProfileData] = useState<ProfileData>(defaultProfileData);
-  const [isClient, setIsClient] = useState(false);
+  //TODO: Change isClient and loading
+  const [isClient, setIsClient] = useState(true);
+  
+  const {isLoaded, user} = useUser();
+  const {isSignedIn} = useAuth();
 
+  const fetchUserData = () => {
+    profileData.name = (user?.firstName + " " + user?.lastName) || "user";
+    profileData.photo = (user?.imageUrl) || "/favicon.png";
+    profileData.email =  user?.primaryEmailAddress?.emailAddress || "no-email@example.com";
+  }
+
+  fetchUserData()
   // Fix 2: Use useEffect to safely access localStorage after component mounts
   useEffect(() => {
+    if(!isLoaded){
+      return;
+    }
     setIsClient(true);
-    
-    // Now it's safe to access localStorage
     const savedUserType = localStorage.getItem('userType') || '';
     setUserType(savedUserType);
     
@@ -68,6 +83,9 @@ export default function ProfilePage() {
     if (isClient) {
       localStorage.setItem('profileData', JSON.stringify(profileData));
     }
+    const skils =
+    
+    console.log("Updated skills:", profileData.skills);
   }, [profileData, isClient]);
 
   useEffect(() => {
@@ -137,7 +155,7 @@ export default function ProfilePage() {
           },
         }
       );
-
+   
       if (api.data?.extracted_skills) {
         // Fix 3: Ensure we're working with arrays before spreading
         const currentSkills = Array.isArray(profileData.skills) ? profileData.skills : [];
@@ -147,6 +165,7 @@ export default function ProfilePage() {
           ...prev,
           skills: [...new Set([...currentSkills, ...newSkills])] // Remove duplicates
         }));
+        console.log(profileData.skills)
       } else {
         throw new Error('No skills were extracted from the resume');
       }
