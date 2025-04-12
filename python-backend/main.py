@@ -6,6 +6,11 @@ from sentence_transformers import SentenceTransformer, util
 import io
 from typing import List
 import pandas as pd
+import os
+import faiss
+import groq
+import numpy as np
+from pydantic import BaseModel
 from sklearn.cluster import KMeans
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -47,6 +52,57 @@ career_mapping = {
     5: "Generalist / Software Engineer"
 }
 
+GROQ_API_KEY = "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"
+os.environ["GROQ_API_KEY"] = GROQ_API_KEY
+client = groq.Client(api_key=os.getenv("GROQ_API_KEY"))
+
+model_embedder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+TEXT_FILE = "text_chunks.txt"
+TOP_K = 5
+
+def load_text_chunks(filepath):
+    if not os.path.exists(filepath):
+        print(f"❌ Error: {filepath} not found.")
+        return []
+    with open(filepath, "r", encoding="utf-8") as f:
+        return f.read().splitlines()
+
+text_chunks = load_text_chunks(TEXT_FILE)
+if text_chunks:
+    embeddings = model_embedder.encode(text_chunks, convert_to_numpy=True).astype(np.float32)
+    faiss_index = faiss.IndexFlatL2(embeddings.shape[1])
+    faiss_index.add(embeddings)
+else:
+    faiss_index = None
+
+def search_chunks(query, chunks, index, top_k=TOP_K):
+    query_embedding = model_embedder.encode([query]).astype(np.float32)
+    distances, indices = index.search(query_embedding, top_k)
+    return [chunks[i] for i in indices[0] if 0 <= i < len(chunks)]
+
+def query_groq(query, context_chunks):
+    context = "\n".join(context_chunks)
+    prompt = f"""
+You are a personal AI career advisor. Only respond to queries related to the user's skillset: Machine Learning, Python, Deep Learning, NLP, Data Science, etc.
+
+Use the following retrieved context to assist the user:
+
+{context}
+
+Question: {query}
+Answer:
+"""
+    response = client.chat.completions.create(
+        model="llama3-8b-8192",
+        messages=[
+            {"role": "system", "content": "You are a helpful AI."},
+            {"role": "user", "content": prompt}
+        ],
+        max_tokens=300
+    )
+    return response.choices[0].message.content.strip()
+
+
 def clean_resume_text(text):
     text = re.sub(r'[•|]', '\n', text)
     text = re.sub(r'\s+', ' ', text)
@@ -76,6 +132,50 @@ def extract_text_from_pdf(file_bytes):
             if text:
                 full_text += text + "\n"
     return full_text.strip()
+
+def load_text_chunks(filepath):
+    if not os.path.exists(filepath):
+        print(f"❌ Error: {filepath} not found.")
+        return []
+    with open(filepath, "r", encoding="utf-8") as f:
+        return f.read().splitlines()
+
+text_chunks = load_text_chunks(TEXT_FILE)
+if text_chunks:
+    embeddings = model_embedder.encode(text_chunks, convert_to_numpy=True).astype(np.float32)
+    faiss_index = faiss.IndexFlatL2(embeddings.shape[1])
+    faiss_index.add(embeddings)
+else:
+    faiss_index = None
+
+def search_chunks(query, chunks, index, top_k=TOP_K):
+    query_embedding = model_embedder.encode([query]).astype(np.float32)
+    distances, indices = index.search(query_embedding, top_k)
+    return [chunks[i] for i in indices[0] if 0 <= i < len(chunks)]
+
+def query_groq(query, context_chunks):
+    context = "\n".join(context_chunks)
+    prompt = f"""
+You are a personal AI career advisor. Only respond to queries related to the user's skillset: Machine Learning, Python, Deep Learning, NLP, Data Science, etc.
+
+Use the following retrieved context to assist the user:
+
+{context}
+
+Question: {query}
+Answer:
+"""
+    response = client.chat.completions.create(
+        model="llama3-8b-8192",
+        messages=[
+            {"role": "system", "content": "You are a helpful AI."},
+            {"role": "user", "content": prompt}
+        ],
+        max_tokens=300
+    )
+    return response.choices[0].message.content.strip()
+
+
 
 @app.post("/extract-skills")
 async def extract_skills(file: UploadFile = File(...)):
@@ -193,5 +293,14 @@ async def jobs_analysis():
     }
 
 
+class QueryRequest(BaseModel):
+    query: str
 
-    
+@app.post("/career-chatbot")
+async def career_chatbot(request: QueryRequest):
+    if not faiss_index or not text_chunks:
+        return {"error": "Index or text chunks not loaded properly."}
+
+    retrieved = search_chunks(request.query, text_chunks, faiss_index)
+    response = query_groq(request.query, retrieved)
+    return {"response": response}
