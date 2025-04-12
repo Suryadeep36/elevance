@@ -4,11 +4,15 @@ import { FileUpload } from "@/components/ui/file-upload";
 import { X, UploadCloud, Image as ImageIcon, Check, XCircle, Loader2 } from "lucide-react";
 import Image from "next/image";
 import axios from "axios";
-
+import { BrowserProvider } from "ethers"; // Replaces Web3Provider
+import { ethers } from "ethers";
+import { getBadgeContract } from "@/utils/badgeContract";
 interface CourseResult {
   course_name: string;
   cluster: string;
 }
+
+
 
 interface VerificationResult {
   courses_found: CourseResult[];
@@ -18,6 +22,54 @@ interface VerificationResult {
   extracted_text: string;
   error?: string;
 }
+
+const badgeMetadataMap: Record<string, { skill: string; tokenURI: string }> = {
+  "Machine Learning": {
+    skill: "Machine Learning",
+    tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreibxxlgv4dphmpglmyic35fezeqm5icxvgtl7fxnp3jynr4ricwxzm",
+  },
+  "Frontend Developer": {
+    skill: "Frontend Developer",
+    tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreiasduaedmvs4l2xvzyxbvfyd5uy7nmxfvy4gttt6kywo44oholudq",
+  },
+  "App Developer": {
+    skill: "App Developer",
+    tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreie4rog6fes64w736yexqlvttdotfbro2ebgakyykknh7gxpvsdkoq",
+  },
+  "Backend Developer": {
+    skill: "Backend Developer",
+    tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreia7alc4mgxjj54evueiomapt7p5umcnzq3yneu4wdldpc6lx34ys4",
+  },
+  "Cloud Dev": {
+    skill: "Cloud Engineer",
+    tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreifhrsqusx3rd2nbaq2y22564uyf4bvslimvom6dx5xemjc23wtfra",
+  },
+};
+
+const mintBadge = async (cluster: string) => {
+  
+  const metadata = badgeMetadataMap[cluster];
+  if (!metadata) {
+    alert(`No metadata found for cluster: ${cluster}`);
+    return;
+  }
+
+  const provider = new ethers.BrowserProvider((window as any).ethereum);
+  await provider.send("eth_requestAccounts", []);
+  const signer = await provider.getSigner(); 
+  const userAddress = await signer.getAddress(); 
+
+  const contract = getBadgeContract(signer);
+
+  try {
+    const tx = await contract.mintBadge(userAddress, metadata.skill, metadata.tokenURI);
+    await tx.wait();
+    alert("Badge minted successfully!");
+  } catch (error) {
+    console.error("Minting failed:", error);
+    alert("Minting failed. Check console.");
+  }
+};
 
 export default function Page() {
   const [files, setFiles] = useState<File[]>([]);
@@ -54,8 +106,10 @@ export default function Page() {
           },
         }
       );
-
-      console.log(response.data);
+      const clustor = response.data.courses_found[0].cluster;
+      if (response.data.valid_certificate && response.data.platform_verified) {
+        await mintBadge(clustor);
+      }  
       setVerificationResult(response.data);
     } catch (error) {
       console.error("Verification failed:", error);
