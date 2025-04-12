@@ -3,7 +3,6 @@ import { NextRequest } from 'next/server';
 import { v2 as cloudinary } from 'cloudinary';
 import { auth } from '@clerk/nextjs/server';
 
-// Configuration
 cloudinary.config({
     cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
@@ -40,7 +39,6 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
         }
 
-        // Validate file is a PDF
         if (!file.name.toLowerCase().endsWith('.pdf')) {
             return NextResponse.json({ error: 'Only PDF files are accepted' }, { status: 400 });
         }
@@ -53,11 +51,12 @@ export async function POST(request: NextRequest) {
                 const uploadStream = cloudinary.uploader.upload_stream(
                     {
                         folder: 'resumes',
-                        resource_type: 'auto', // Changed from 'raw' to 'auto' for better type detection
-                        use_filename: true,     // Preserve original filename
-                        unique_filename: true,  // Add unique identifier
-                        format: 'pdf',          // Explicitly set format to PDF
-                        type: 'private',        // Better for documents like resumes
+                        resource_type: 'auto',
+                        use_filename: true,
+                        unique_filename: true,
+                        format: 'pdf',
+                        type: 'upload', 
+                        access_mode: 'public'
                     },
                     (error, result) => {
                         if (error) {
