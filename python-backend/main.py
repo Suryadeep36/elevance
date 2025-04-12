@@ -114,7 +114,7 @@ def clean_resume_text(text):
     text = re.sub(r'\s+', ' ', text)
     return text.lower()
 
-def extract_skills_from_resume(resume_text, similarity_threshold=0.3):
+def extract_skills_from_resume(resume_text, similarity_threshold=0.4):
     resume_text = clean_resume_text(resume_text)
     phrases = re.split(r'[\n,.;:]', resume_text)
     phrases = [phrase.strip() for phrase in phrases if len(phrase.strip()) >= 2]
@@ -248,7 +248,6 @@ async def recommend_jobs(skills: List[str]):
 @app.get("/job-analysis")
 async def jobs_analysis():
     """Endpoint to return processed data for frontend"""
-    df = pd.read_csv("ai_job_market_insights.csv")
     df=pd.read_csv("ai_job_market_insights.csv")
     salary_by_title = df.groupby("Job_Title", as_index=False)["Salary_USD"].mean().sort_values(by="Salary_USD", ascending=False).to_dict('records')
     industry_distribution = df["Industry"].value_counts().reset_index().rename(columns={"count": "value"}).to_dict('records')

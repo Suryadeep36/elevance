@@ -13,18 +13,16 @@ import json
 from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
 
-from google.colab import files
-uploaded = files.upload()
 
 job_df=pd.read_csv("ai_job_market_insights.csv")
 coursera_df=pd.read_csv("Coursera.csv")
-udemy_df=pd.read_csv("Udemy.csv")
-edx_df=pd.read_csv("edx.csv")
-skillshare_df=pd.read_csv("skillshare.csv")
+# udemy_df=pd.read_csv("Udemy.csv")
+# edx_df=pd.read_csv("edx.csv")
+# skillshare_df=pd.read_csv("skillshare.csv")
 
 coursera_df
 
-udemy_df
+# udemy_df
 
 user_profile = {
     "name": "John Doe",
@@ -106,9 +104,7 @@ print(df_roles)
 
 df_roles
 
-user_input = """
-I enjoy coding in javascript, and I'm passionate about web dev. I've done projects in it.
-"""
+user_input = user_profile["desired_skills"] 
 
 model = SentenceTransformer('all-MiniLM-L6-v2')
 role_texts = [role['title'] + " " + role['description'] + " " + " ".join(role['skills']) for role in roles]
@@ -133,7 +129,7 @@ def get_top_courses_semantic(df_roles_sorted, coursera_df, top_n_courses=5, top_
 
     for _, role in df_roles_sorted.head(top_n_roles).iterrows():
         role_title = role["title"]
-        role_skills = [s.strip() for s in role["skills"]]  # clean list
+        role_skills = [s.strip() for s in role["skills"]]  
         role_skill_embeddings = model.encode(role_skills)
 
         recommended = []
@@ -181,5 +177,5 @@ recommendations
 
 df_recommendations = pd.DataFrame(recommendations)
 
-df_recommendations
+print(df_recommendations)
 

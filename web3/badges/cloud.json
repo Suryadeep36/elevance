@@ -1,0 +1,17 @@
+{
+    "name": "Cloud & DevOps Badge",
+    "description": "Awarded for completing Cloud and DevOps courses.",
+    "image": "https://aquamarine-urban-firefly-16.mypinata.cloud/ipfs/bafybeigfcmv7ic4s67rdnlo2aowb4a47wvalcbankcz4wyy4rcn53on4xq",
+    "skills": [
+      "AWS",
+      "Azure",
+      "GCP",
+      "Docker",
+      "Kubernetes",
+      "CI/CD (GitHub Actions, Jenkins)",
+      "Linux Basics",
+      "Networking",
+      "Infrastructure as Code (Terraform)"
+    ]
+  }
+  
