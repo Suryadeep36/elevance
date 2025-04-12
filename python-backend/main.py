@@ -9,8 +9,21 @@ import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-
+import pandas as pd
+import plotly.express as px
+from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI()
+
+origins = '*'
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # Load model once
 model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -162,3 +175,23 @@ async def recommend_jobs(skills: List[str]):
 
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
+
+# Load the data
+df = pd.read_csv("ai_job_market_insights.csv")
+
+
+@app.get("/job-analysis")
+async def jobs_analysis():
+    """Endpoint to return processed data for frontend"""
+    salary_by_title = df.groupby("Job_Title", as_index=False)["Salary_USD"].mean().sort_values(by="Salary_USD", ascending=False).to_dict('records')
+    industry_distribution = df["Industry"].value_counts().reset_index().rename(columns={"count": "value"}).to_dict('records')
+    
+    return {
+        "salary_by_title": salary_by_title,
+        "industry_distribution": industry_distribution,
+        "raw_data": df.to_dict('records')
+    }
+
+
+
+    

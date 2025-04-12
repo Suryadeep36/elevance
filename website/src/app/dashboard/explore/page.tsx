@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
-
+import ElevanceLoader from '@/components/loader';
 // Quiz types
 type QuizQuestion = {
   question: string;
@@ -39,26 +39,50 @@ export default function QuizPage() {
   const [correctAnswers, setCorrectAnswers] = useState(0);
   const [wrongAnswers, setWrongAnswers] = useState(0);
   const [report, setReport] = useState<QuizReport | null>(null);
+  
+
+  //loading 
+  const [loading, setloading] = useState(false);
+
+  //store all quizes
+  const [quizes, setquizes] = useState<QuizQuestion[]>([]);
 
 
 
   // Level progression mapping
   const levels = ["beginner", "intermediate", "advanced", "expert"];
 
+  const setData = async() => {
+    const response = await axios.post("/api/gemini/quiz", {
+      quizes,
+      level,
+      skill,
+    });
+
+    console.log(response.data.quiz)
+    setquizes((prev) => [...prev, response.data.quiz]);
+    setQuizData(response.data.quiz);
+  }
+
   // Fetch a new quiz question
   async function fetchQuiz() {
+    setloading(true);
     try {
-      const response = await axios.post("/api/quiz/gen", {
-        level,
-        skill,
-      });
-
-      console.log(response.data.quiz)
-
-      setQuizData(response.data.quiz);
+      await setData();
     } catch (error) {
       console.error("Error fetching quiz:", error);
-
+      let trys = 10;
+      while(trys > 0){
+        try{
+          await setData();
+          setloading(false)
+          return;
+        }
+        catch(err){
+          trys--;
+        }
+      }
+      setloading(false)
     }
   }
 
@@ -144,7 +168,8 @@ export default function QuizPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-900 text-white p-4 overflow-hidden">
+    <div className=" flex items-center justify-center min-h-screen bg-gray-900 text-white p-4 overflow-hidden">
+      {/* {loading ? <ElevanceLoader/> : <></>} */}
       <motion.div
         className="relative w-full max-w-2xl rounded-xl overflow-hidden"
         initial={{ opacity: 0, y: 20 }}
