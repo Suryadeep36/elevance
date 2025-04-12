@@ -33,7 +33,7 @@ function Header() {
     <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${headerClass}`}>
       <div className="container-custom">
         <div className="flex items-center justify-between">
-          <Link href="/" className="relative z-10">
+          <Link href="/" className="relative z-10 pl-10">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -53,17 +53,16 @@ function Header() {
             transition={{ duration: 0.5, delay: 0.1 }}
             className="hidden md:flex items-center gap-8"
           >
-            <Link 
-              href="/" 
-              className={`font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-[#0a1120] rounded px-2 py-1 ${
-                isActivePath('/') 
-                  ? 'text-blue-400 border-b-2 border-blue-400' 
+            <Link
+              href="/"
+              className={`font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-[#0a1120] rounded px-2 py-1 ${isActivePath('/')
+                  ? 'text-blue-400 border-b-2 border-blue-400'
                   : 'text-gray-200 hover:text-blue-400'
-              }`}
+                }`}
             >
               Home
             </Link>
-            <Link 
+            {/* <Link 
               href="/dashboard" 
               className={`font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-[#0a1120] rounded px-2 py-1 ${
                 isActivePath('/dashboard') 
@@ -72,7 +71,20 @@ function Header() {
               }`}
             >
               Dashboard
-            </Link>
+            </Link> */}
+
+            {isSignedIn && (
+              <Link
+                href="/dashboard"
+                className={`font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-[#0a1120] rounded px-2 py-1 ${isActivePath('/dashboard')
+
+                    ? 'text-blue-400 border-b-2 border-blue-400'
+                    : 'text-gray-200 hover:text-blue-400'
+                  }`}
+              >
+                Dashboard
+              </Link>
+            )}
           </motion.nav>
 
           <motion.div
@@ -131,26 +143,24 @@ function Header() {
             transition={{ duration: 0.3 }}
             className="md:hidden bg-[#0a1120] shadow-lg border-t border-blue-900/50"
           >
-            <div className="container-custom py-4">
+            <div className="container-custom py-4 pr-10">
               <nav className="flex flex-col gap-4 mb-6">
                 <Link
                   href="/"
-                  className={`px-4 py-2 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-blue-400 ${
-                    isActivePath('/') 
+                  className={`px-4 py-2 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-blue-400 ${isActivePath('/')
                       ? 'bg-blue-900/50 text-blue-300'
                       : 'text-gray-200 hover:bg-blue-900/30'
-                  }`}
+                    }`}
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Home
                 </Link>
                 <Link
                   href="/dashboard"
-                  className={`px-4 py-2 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-blue-400 ${
-                    isActivePath('/dashboard') 
+                  className={`px-4 py-2 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-blue-400 ${isActivePath('/dashboard')
                       ? 'bg-blue-900/50 text-blue-300'
                       : 'text-gray-200 hover:bg-blue-900/30'
-                  }`}
+                    }`}
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Dashboard
