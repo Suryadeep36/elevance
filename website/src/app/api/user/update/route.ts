@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import dbConnect from '@/utils/dbConnect';
-import UserModel from '@/models/User';
+import dbConnect from '@/lib/dbConnect';
+import UserModel from '@/model/User';
 
 export async function PUT(req: Request) {
   try {
