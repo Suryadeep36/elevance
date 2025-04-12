@@ -168,7 +168,7 @@ export default function QuizPage() {
   };
 
   return (
-    <div className=" flex items-center justify-center min-h-screen bg-gray-900 text-white p-4 overflow-hidden">
+    <div className="scroll-container overflow-y-auto pb-8 flex items-center justify-center min-h-screen bg-gray-900 text-white p-4 overflow-hidden" style={{ maxHeight: 'calc(100vh - 180px)' }}>
       {/* {loading ? <ElevanceLoader/> : <></>} */}
       <motion.div
         className="relative w-full max-w-2xl rounded-xl overflow-hidden"
