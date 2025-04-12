@@ -1,9 +1,10 @@
 "use client"
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, Search, Briefcase, Network, LogOut } from 'lucide-react';
+import { User, Search, Briefcase, Network, LogOut, ListChecks } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { IconCertificate } from '@tabler/icons-react';
 
 
 export function Sidebar() {
@@ -13,9 +14,11 @@ export function Sidebar() {
   const router = useRouter()
   const menuItems = [
     { id: 'profile', icon: User, label: 'dashboard' },
-    { id: 'explore', icon: Search, label: 'dashboard/explore' },
+    { id: 'Skill Assessment', icon: Search, label: 'dashboard/skill_assessment' },
     { id: 'jobs', icon: Briefcase, label: 'dashboard/jobs' },
+    { id: 'Resume&Interview tips', icon: ListChecks , label: 'dashboard/resume_and_interview_tips' },
     { id: 'network', icon: Network, label: 'dashboard/network' },
+    { id: 'certificates', icon: IconCertificate, label: 'dashboard/certificates' },
   ];
 
   useEffect(() => {

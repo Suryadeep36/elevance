@@ -5,11 +5,11 @@ export async function POST(req: NextRequest) {
     try {
         const { skill, level } = await req.json();
 
-        if (!process.env?.GEMEINI_KEY) {
+        if (!process.env?.GEMINI_KEY) {
             throw new Error("GEMINI_KEY is not defined in the environment variables.");
         }
 
-        const genAI = new GoogleGenerativeAI(process.env.GEMEINI_KEY);
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY);
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         const prompt = `Generate a quiz question about ${skill} at ${level} level. 
