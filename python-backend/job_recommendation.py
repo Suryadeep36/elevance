@@ -9,8 +9,6 @@ Original file is located at
 
 import pandas as pd
 
-from google.colab import files
-uploaded = files.upload()
 
 df=pd.read_csv("ai_job_market_insights.csv")
 
@@ -32,20 +30,23 @@ clusters = kmeans.fit_predict(X)
 df['Cluster'] = clusters
 
 # Example user resume skills as a list
-user_skills_list = ['AWS',
- 'Computer Networking',
- 'EC2',
- 'Kubernetes',
- 'azure',
- 'c',
- 'cnn',
- 'communication',
- 'data structures',
- 'git',
- 'ml',
- 'sql',
- 'supervised learning',
- 'teamwork']
+user_skills_list =[
+    "algorithms",
+    "css",
+    "django",
+    "git",
+    "html",
+    "javascript",
+    "k-means",
+    "machine learning",
+    "matplotlib",
+    "pandas",
+    "python",
+    "sql",
+    "tensorflow",
+    "unsupervised learning",
+    "xgboost"
+  ]
 
 # Convert list to a comma-separated string for vectorizer
 user_skills_text = ', '.join(user_skills_list)
@@ -62,6 +63,15 @@ recommended_jobs = df.iloc[top_indices]
 
 print("🎯 Top 5 Recommended Jobs for You:\n")
 print(recommended_jobs)
+
+
+
+
+
+
+
+
+
 
 
 
