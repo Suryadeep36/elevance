@@ -9,7 +9,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         <Sidebar />
       </div>
       
-      <div className='flex-1 overflow-hidden p-4 bg-gray-50 dark:bg-gray-900'>
+      <div className='mt-16 flex-1 overflow-hidden p-4 bg-gray-50 dark:bg-gray-900'>
         {children}
       </div>
     </main>

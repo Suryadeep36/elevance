@@ -9,8 +9,6 @@ Original file is located at
 
 import pandas as pd
 
-from google.colab import files
-uploaded = files.upload()
 
 df=pd.read_csv("ai_job_market_insights.csv")
 
