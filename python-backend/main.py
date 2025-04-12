@@ -7,6 +7,8 @@ import io
 from typing import List
 import pandas as pd
 from sklearn.cluster import KMeans
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 import pandas as pd
 import plotly.express as px
 from fastapi.middleware.cors import CORSMiddleware
@@ -100,10 +102,8 @@ async def suggest_career(files: List[UploadFile] = File(...)):
         all_skills_per_resume.append(skills)
         file_names.append(file.filename)
 
-    # Create a flat skill list
     all_skills = list(set([skill.lower() for resume in all_skills_per_resume for skill in resume]))
 
-    # Binary skill matrix
     def build_skill_matrix(resumes, all_skills):
         matrix = []
         for skills in resumes:
@@ -113,19 +113,16 @@ async def suggest_career(files: List[UploadFile] = File(...)):
 
     skill_df = build_skill_matrix(all_skills_per_resume, all_skills)
 
-    # Clustering
-    k = min(6, len(files))  # ensure k <= number of files
+    k = min(6, len(files))
     kmeans = KMeans(n_clusters=k, random_state=42)
     skill_df["cluster"] = kmeans.fit_predict(skill_df)
 
-    # Determine top skills per cluster
     cluster_to_top_skills = {}
     for cluster_num in range(k):
         cluster_skills = skill_df[skill_df["cluster"] == cluster_num].drop(columns=["cluster"]).sum()
         top_skills = cluster_skills.sort_values(ascending=False).head(5).index.tolist()
         cluster_to_top_skills[cluster_num] = top_skills
 
-    # Assign careers (you can improve this logic)
     cluster_to_career = {}
     for cluster_num, skills in cluster_to_top_skills.items():
         if "machine learning" in skills or "pytorch" in skills or "tensorflow" in skills:
@@ -141,7 +138,6 @@ async def suggest_career(files: List[UploadFile] = File(...)):
         else:
             cluster_to_career[cluster_num] = "Generalist / Software Engineer"
 
-    # Prepare response
     results = []
     for idx, skills in enumerate(all_skills_per_resume):
         cluster = skill_df.iloc[idx]["cluster"]
@@ -153,6 +149,32 @@ async def suggest_career(files: List[UploadFile] = File(...)):
         })
 
     return {"results": results}
+
+@app.post("/recommend-jobs")
+async def recommend_jobs(skills: List[str]):
+    try:
+        # Load the job dataset
+        df = pd.read_csv("ai_job_market_insights.csv")
+
+        # Vectorize job required skills
+        vectorizer = TfidfVectorizer(stop_words='english')
+        X = vectorizer.fit_transform(df['Required_Skills'].fillna(""))
+
+        # Prepare user input
+        user_input = ', '.join(skills)
+        user_vec = vectorizer.transform([user_input])
+
+        # Compute cosine similarity
+        similarities = cosine_similarity(user_vec, X).flatten()
+        top_indices = similarities.argsort()[-5:][::-1]
+        recommended_jobs = df.iloc[top_indices]
+
+        return {
+            "recommended_jobs": recommended_jobs.to_dict(orient="records")
+        }
+
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 # Load the data
 df = pd.read_csv("ai_job_market_insights.csv")
