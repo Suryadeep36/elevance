@@ -1,17 +1,49 @@
 "use client"
 import SplineScene from "@/components/Animation";
 import Brain from "@/components/Brain";
-import MovingGlobe from "@/components/MovingGlobe"; 
+import MovingGlobe from "@/components/MovingGlobe";
 import GrowGraph from "@/components/growGraph";
 import { useState, useEffect } from "react";
 import { TechLoader } from "@/components/TechLoader";
 import { useAuth } from '@clerk/nextjs';
 import Link from "next/link";
-
+import { useUser } from '@clerk/nextjs';
 
 export default function Home() {
 
   const { isSignedIn, isLoaded } = useAuth();
+  const { user } = useUser();
+
+  useEffect(() => {
+    const createUserIfNotExists = async () => {
+      if (!isSignedIn || !user) return;
+
+      try {
+        const res = await fetch('/api/user/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clerk_Id: user.id,
+            name: user.fullName,
+            email: user.emailAddresses[0]?.emailAddress,
+            profileImage: user.imageUrl,
+            role: 'USER',
+          }),
+        });
+
+        if (res.ok) {
+          console.log('User saved in DB');
+        } else {
+          const err = await res.json();
+          console.error('User creation failed:', err.msg || err.error);
+        }
+      } catch (err) {
+        console.error('Error in user creation:', err);
+      }
+    };
+
+    createUserIfNotExists();
+  }, [isSignedIn, user]);
 
 
   const [loading, setLoading] = useState(true);
@@ -23,7 +55,7 @@ export default function Home() {
     return () => clearTimeout(timer);
   }
 
-  , []);
+    , []);
 
   if (loading) {
     return (
@@ -69,13 +101,13 @@ export default function Home() {
             <p>Kickstart your journey with personalized career assessments and curated content tailored to your interests and strengths. The system guides you through interactive modules to build real-world skills while tracking your growth.</p>
           </div>
           <div className="w-1/2">
-          <Brain />
+            <Brain />
           </div>
         </div>
 
         <div className="flex items-center justify-between gap-10 max-w-6xl mx-auto mb-16">
           <div className="w-1/2">
-          <MovingGlobe /> 
+            <MovingGlobe />
           </div>
           <div className="w-1/2 text-left">
             <h3 className="text-xl font-semibold mb-2 text-blue-200">🤝 Collaborate</h3>
@@ -89,7 +121,7 @@ export default function Home() {
             <p>Our smart advisor uses AI-driven analysis to recommend the best learning paths based on your evolving profile—so you keep moving forward with purpose and precision.</p>
           </div>
           <div className="w-1/2">
-          <GrowGraph />
+            <GrowGraph />
           </div>
         </div>
       </section>
