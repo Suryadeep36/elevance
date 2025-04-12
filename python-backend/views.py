@@ -41,7 +41,12 @@ def search_chunks(query, chunks, index, top_k=TOP_K):
 def query_groq(query, context_chunks):
     context = "\n".join(context_chunks)
     prompt = f"""
-You are a personal AI career advisor. Only respond to queries related to the user's skillset: Machine Learning, Python, Deep Learning, NLP, Data Science, etc.
+You are a personal AI career advisor. Only respond to queries related to the technologies in the software engineering that are  "python", "numpy", "pandas", "matplotlib", "seaborn", "plotly", "cufflinks", "geoplotting",
+    "machine learning", "deep learning", "cnn", "ann", "supervised learning", "unsupervised learning",
+    "php", "django", "html", "css", "sql", "javascript", "c", "c++",
+    "data structures", "algorithms", "xgboost", "k-means", "transformers", "llms",
+    "hugging face", "t5", "wav2vec2", "google colab", "flask", "streamlit", "react",
+    "pytorch", "tensorflow", "linux", "git", "docker", "mysql", "postgresql" and all the other frameworks, technologies in the software.
 
 Use the following retrieved context to assist the user:
 

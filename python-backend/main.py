@@ -52,38 +52,45 @@ career_mapping = {
     5: "Generalist / Software Engineer"
 }
 
+TEXT_FILE = "text_chunks.txt"
+TOP_K = 5
 GROQ_API_KEY = "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"
+
+# --- Setup Groq client ---
 os.environ["GROQ_API_KEY"] = GROQ_API_KEY
 client = groq.Client(api_key=os.getenv("GROQ_API_KEY"))
 
-model_embedder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-TEXT_FILE = "text_chunks.txt"
-TOP_K = 5
+# --- Load model ---
+model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
+# --- Load text chunks ---
 def load_text_chunks(filepath):
     if not os.path.exists(filepath):
-        print(f"❌ Error: {filepath} not found.")
-        return []
+        raise FileNotFoundError(f"{filepath} not found.")
     with open(filepath, "r", encoding="utf-8") as f:
         return f.read().splitlines()
 
 text_chunks = load_text_chunks(TEXT_FILE)
-if text_chunks:
-    embeddings = model_embedder.encode(text_chunks, convert_to_numpy=True).astype(np.float32)
-    faiss_index = faiss.IndexFlatL2(embeddings.shape[1])
-    faiss_index.add(embeddings)
-else:
-    faiss_index = None
+index = faiss.IndexFlatL2(model.get_sentence_embedding_dimension())
+embeddings = model.encode(text_chunks, convert_to_numpy=True).astype(np.float32)
+index.add(embeddings)
 
+# --- FAISS Search ---
 def search_chunks(query, chunks, index, top_k=TOP_K):
-    query_embedding = model_embedder.encode([query]).astype(np.float32)
+    query_embedding = model.encode([query]).astype(np.float32)
     distances, indices = index.search(query_embedding, top_k)
     return [chunks[i] for i in indices[0] if 0 <= i < len(chunks)]
 
+# --- Groq Query ---
 def query_groq(query, context_chunks):
     context = "\n".join(context_chunks)
     prompt = f"""
-You are a personal AI career advisor. Only respond to queries related to the user's skillset: Machine Learning, Python, Deep Learning, NLP, Data Science, etc.
+You are a personal AI career advisor. Only respond to queries related to the technologies in the software engineering that are  "python", "numpy", "pandas", "matplotlib", "seaborn", "plotly", "cufflinks", "geoplotting",
+    "machine learning", "deep learning", "cnn", "ann", "supervised learning", "unsupervised learning",
+    "php", "django", "html", "css", "sql", "javascript", "c", "c++",
+    "data structures", "algorithms", "xgboost", "k-means", "transformers", "llms",
+    "hugging face", "t5", "wav2vec2", "google colab", "flask", "streamlit", "react",
+    "pytorch", "tensorflow", "linux", "git", "docker", "mysql", "postgresql" and all the other frameworks, technologies in the software.
 
 Use the following retrieved context to assist the user:
 
@@ -101,7 +108,6 @@ Answer:
         max_tokens=300
     )
     return response.choices[0].message.content.strip()
-
 
 def clean_resume_text(text):
     text = re.sub(r'[•|]', '\n', text)
@@ -132,48 +138,6 @@ def extract_text_from_pdf(file_bytes):
             if text:
                 full_text += text + "\n"
     return full_text.strip()
-
-def load_text_chunks(filepath):
-    if not os.path.exists(filepath):
-        print(f"❌ Error: {filepath} not found.")
-        return []
-    with open(filepath, "r", encoding="utf-8") as f:
-        return f.read().splitlines()
-
-text_chunks = load_text_chunks(TEXT_FILE)
-if text_chunks:
-    embeddings = model_embedder.encode(text_chunks, convert_to_numpy=True).astype(np.float32)
-    faiss_index = faiss.IndexFlatL2(embeddings.shape[1])
-    faiss_index.add(embeddings)
-else:
-    faiss_index = None
-
-def search_chunks(query, chunks, index, top_k=TOP_K):
-    query_embedding = model_embedder.encode([query]).astype(np.float32)
-    distances, indices = index.search(query_embedding, top_k)
-    return [chunks[i] for i in indices[0] if 0 <= i < len(chunks)]
-
-def query_groq(query, context_chunks):
-    context = "\n".join(context_chunks)
-    prompt = f"""
-You are a personal AI career advisor. Only respond to queries related to the user's skillset: Machine Learning, Python, Deep Learning, NLP, Data Science, etc.
-
-Use the following retrieved context to assist the user:
-
-{context}
-
-Question: {query}
-Answer:
-"""
-    response = client.chat.completions.create(
-        model="llama3-8b-8192",
-        messages=[
-            {"role": "system", "content": "You are a helpful AI."},
-            {"role": "user", "content": prompt}
-        ],
-        max_tokens=300
-    )
-    return response.choices[0].message.content.strip()
 
 
 
@@ -293,14 +257,17 @@ async def jobs_analysis():
     }
 
 
+# --- Request Body Model ---
 class QueryRequest(BaseModel):
     query: str
 
-@app.post("/career-chatbot")
-async def career_chatbot(request: QueryRequest):
-    if not faiss_index or not text_chunks:
-        return {"error": "Index or text chunks not loaded properly."}
-
-    retrieved = search_chunks(request.query, text_chunks, faiss_index)
-    response = query_groq(request.query, retrieved)
-    return {"response": response}
+# --- Endpoint ---
+@app.post("/query")
+def handle_query(request: QueryRequest):
+    query = request.query.strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="Query cannot be empty.")
+    
+    retrieved = search_chunks(query, text_chunks, index)
+    response = query_groq(query, retrieved)
+    return {"answer": response}
