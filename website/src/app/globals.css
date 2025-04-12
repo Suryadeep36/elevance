@@ -3,6 +3,10 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --font-inter: var(--font-inter);
+  --font-sora: var(--font-sora);
+  --font-orbitron: var(--font-orbitron);
+  --font-rajdhani: var(--font-rajdhani);
 }
 
 @theme inline {
@@ -22,5 +26,24 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), Arial, sans-serif;
 }
+
+.font-inter {
+  font-family: var(--font-inter), Arial, sans-serif;
+}
+
+.font-sora {
+  font-family: var(--font-sora), Arial, sans-serif;
+}
+
+.font-orbitron {
+  font-family: var(--font-orbitron), Arial, sans-serif;
+}
+
+.font-rajdhani {
+  font-family: var(--font-rajdhani), Arial, sans-serif;
+}
+
+
+

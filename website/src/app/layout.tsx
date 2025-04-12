@@ -9,6 +9,22 @@ import Footer from '@/components/Footer'
 import ThemeProvider from '@/providers/theme-provider'
 import { neobrutalism } from '@clerk/themes';
 import { Analytics } from '@vercel/analytics/react'
+import { Inter, Sora } from 'next/font/google';
+
+import { Orbitron, Rajdhani } from 'next/font/google';
+
+const orbitron = Orbitron({
+  subsets: ['latin'],
+  variable: '--font-orbitron',
+  display: 'swap',
+});
+
+const rajdhani = Rajdhani({
+  weight: "400",
+  subsets: ['latin'],
+  variable: '--font-rajdhani',
+  display: 'swap',
+});
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -19,6 +35,18 @@ const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
   subsets: ['latin'],
 })
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+});
+
+const sora = Sora({
+  subsets: ['latin'],
+  variable: '--font-sora',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Elevance',
@@ -46,7 +74,7 @@ export default function RootLayout({
       signUpUrl="/sign-up"
     >
       <Analytics />
-      <html lang='en' className='scroll-smooth'>
+      <html lang='en' className={`${inter.variable} ${sora.variable} ${orbitron.variable} ${rajdhani.variable} scroll-smooth`}>
         <body className='antialiased'>
           <ThemeProvider attribute="class" defaultTheme="light">
             <div className='min-h-screen flex flex-col'>
