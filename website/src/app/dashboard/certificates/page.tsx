@@ -4,9 +4,10 @@ import { FileUpload } from "@/components/ui/file-upload";
 import { X, UploadCloud, Image as ImageIcon, Check, XCircle, Loader2 } from "lucide-react";
 import Image from "next/image";
 import axios from "axios";
-import { BrowserProvider } from "ethers"; // Replaces Web3Provider
+import { BrowserProvider } from "ethers";
 import { ethers } from "ethers";
 import { getBadgeContract } from "@/utils/badgeContract";
+import { useAuth, UserProfile, useUser } from "@clerk/nextjs";
 interface CourseResult {
   course_name: string;
   cluster: string;
@@ -47,7 +48,7 @@ const badgeMetadataMap: Record<string, { skill: string; tokenURI: string }> = {
 };
 
 const mintBadge = async (cluster: string) => {
-  
+
   const metadata = badgeMetadataMap[cluster];
   if (!metadata) {
     alert(`No metadata found for cluster: ${cluster}`);
@@ -56,8 +57,8 @@ const mintBadge = async (cluster: string) => {
 
   const provider = new ethers.BrowserProvider((window as any).ethereum);
   await provider.send("eth_requestAccounts", []);
-  const signer = await provider.getSigner(); 
-  const userAddress = await signer.getAddress(); 
+  const signer = await provider.getSigner();
+  const userAddress = await signer.getAddress();
 
   const contract = getBadgeContract(signer);
 
@@ -75,7 +76,8 @@ export default function Page() {
   const [files, setFiles] = useState<File[]>([]);
   const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-
+  const { isLoaded, user } = useUser();
+  const { userId } = useAuth()
   const handleFileUpload = (uploadedFiles: File[]) => {
     setFiles(uploadedFiles);
     setVerificationResult(null);
@@ -95,7 +97,8 @@ export default function Page() {
     try {
       const formData = new FormData();
       formData.append("certificate", files[0]);
-      formData.append("name", "Manil");
+      // formData.append("name", user?.fullName || "");
+      formData.append("name", "Manil Modi");
 
       const response = await axios.post<VerificationResult>(
         "http://localhost:8000/verify-certificate",
@@ -106,20 +109,46 @@ export default function Page() {
           },
         }
       );
-      const clustor = response.data.courses_found[0].cluster;
-      if (response.data.valid_certificate && response.data.platform_verified) {
-        await mintBadge(clustor);
-      }  
-      setVerificationResult(response.data);
+
+
+      if (response.data.valid_certificate == true) {
+
+        const clustor = response.data.courses_found[0].cluster;
+        if (response.data.valid_certificate && response.data.platform_verified) {
+          await mintBadge(clustor);
+        }
+        setVerificationResult(response.data);
+
+        const newForm = new FormData()
+        newForm.append('file', files[0]);
+        if (!userId) {
+          console.log('user id not found');
+          return;
+        }
+        newForm.append('userId', userId);
+        const urlObjet = await axios.post("/api/certificate", newForm);
+        // Extract the URL from the response
+        const certificateUrl = urlObjet.data?.url?.url;
+        console.log(urlObjet)
+        console.log(certificateUrl)
+        await axios.put('/api/user/update', {
+          certificates: [certificateUrl], // Send just the URL string
+          clerk_Id: userId
+        });
+
+
+      }
+
+
     } catch (error) {
       console.error("Verification failed:", error);
-      setVerificationResult({ 
+      setVerificationResult({
         courses_found: [],
         platform_verified: false,
         user_name_verified: false,
         valid_certificate: false,
         extracted_text: "",
-        error: "Verification failed. Please try again." 
+        error: "Verification failed. Please try again."
       });
     } finally {
       setIsLoading(false);
@@ -202,33 +231,30 @@ export default function Page() {
             )}
             Certificate Verification Results
           </h3>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-neutral-500">Username Verified:</span>
-                <span className={`font-medium ${
-                  verificationResult.user_name_verified ? 'text-green-500' : 'text-red-500'
-                }`}>
+                <span className={`font-medium ${verificationResult.user_name_verified ? 'text-green-500' : 'text-red-500'
+                  }`}>
                   {verificationResult.user_name_verified ? 'Verified' : 'Not Found'}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-neutral-500">Platform Verified:</span>
-                <span className={`font-medium ${
-                  verificationResult.platform_verified ? 'text-green-500' : 'text-red-500'
-                }`}>
+                <span className={`font-medium ${verificationResult.platform_verified ? 'text-green-500' : 'text-red-500'
+                  }`}>
                   {verificationResult.platform_verified ? 'Verified' : 'Not Found'}
                 </span>
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-neutral-500">Certificate Status:</span>
-                <span className={`font-medium ${
-                  verificationResult.valid_certificate ? 'text-green-500' : 'text-red-500'
-                }`}>
+                <span className={`font-medium ${verificationResult.valid_certificate ? 'text-green-500' : 'text-red-500'
+                  }`}>
                   {verificationResult.valid_certificate ? 'Valid' : 'Invalid'}
                 </span>
               </div>

@@ -19,31 +19,36 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
     
-    // Remove clerk_Id from update data to avoid changing it
-    const { clerk_Id, ...updateData } = data;
-    
-    // Log the update for debugging
-    console.log("Updating user with clerk_Id:", clerk_Id);
-    console.log("Update data:", updateData);
+    const { clerk_Id, certificates, ...updateData } = data;
 
-    if(updateData.resume != null && updateData.skills != null){
-      await UserModel.findOneAndUpdate(
-        { clerk_Id },
-        {
-          $set: {
-            resume: updateData.resume,
-            skills: [] 
-          }
-        },
-        { new: true }
-      );
+    // Prepare update operations
+    const updateOps: Record<string, any> = {};
+
+    // 1. Handle general updates (non-array fields)
+    if (Object.keys(updateData).length > 0) {
+      updateOps.$set = updateData;
     }
-    
+
+    // 2. Handle certificates (append new ones instead of replacing)
+    if (certificates && Array.isArray(certificates)) {
+      const newCertificates = certificates.map((cert: any) =>
+        typeof cert === 'object' ? cert.data?.url || cert.data : cert
+      );
+
+      updateOps.$push = {
+        certificates: {
+          $each: newCertificates, // Add all new certificates
+        },
+      };
+    }
+
+    console.log("Update Operations:", updateOps);
+
     // Update the user
     const updatedUser = await UserModel.findOneAndUpdate(
       { clerk_Id },
-      { $set: updateData },
-      { new: true } // Return the updated document
+      updateOps, // Apply all operations
+      { new: true, runValidators: true }
     );
     
     return NextResponse.json({
@@ -53,6 +58,9 @@ export async function PUT(req: Request) {
     }, { status: 200 });
   } catch (error) {
     console.error("Error updating user:", error);
-    return NextResponse.json({ error: 'Failed to update user' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Failed to update user',
+      details: error instanceof Error ? error.message : String(error)
+    }, { status: 500 });
   }
 }

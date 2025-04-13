@@ -1,0 +1,94 @@
+import { NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { v2 as cloudinary } from 'cloudinary';
+import { auth } from '@clerk/nextjs/server';
+import { clerkClient } from '@clerk/express'
+cloudinary.config({
+    cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+interface CloudinaryUploadResult {
+    public_id: string;
+    secure_url: string;
+    format: string;
+    [key: string]: any;
+}
+
+export async function POST(request: NextRequest) {
+    const { userId } = await auth();
+    console.log(userId)
+
+    if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (
+        !process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 
+        !process.env.CLOUDINARY_API_KEY || 
+        !process.env.CLOUDINARY_API_SECRET
+    ) {
+        return NextResponse.json({ error: 'Cloudinary configuration is missing' }, { status: 500 });
+    }
+
+    try {
+        console.log("ok")
+        const formData = await request.formData();
+        console.log(formData , " got it")
+        const file = formData.get('file') as File | null;
+        console.log("file done ", file)
+
+        if (!file) {
+            return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+        }
+
+        // if (!file.name.toLowerCase().endsWith('.pdf')) {
+        //     return NextResponse.json({ error: 'Only PDF files are accepted' }, { status: 400 });
+        // }
+
+        console.log(file)
+
+        const bytes = await file.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        
+        const result = await new Promise<CloudinaryUploadResult>(
+            (resolve, reject) => {
+                const uploadStream = cloudinary.uploader.upload_stream(
+                    {
+                        folder: 'certificates',
+                        resource_type: 'auto',
+                        use_filename: true,
+                        unique_filename: true,
+                        format: 'jpg',
+                        type: 'upload', 
+                        access_mode: 'public'
+                    },
+                    (error, result) => {
+                        if (error) {
+                            reject(error);
+                        } else {
+                            resolve(result as CloudinaryUploadResult);
+                        }
+                    }
+                )
+                uploadStream.end(buffer);
+            }
+        );
+        
+        await clerkClient.users.updateUserMetadata(userId, {
+            privateMetadata: {
+              certificate_url : result,
+            },
+          })
+
+        return NextResponse.json({
+            publicId: result.public_id,
+            url: result,
+            success: true
+        }, { status: 200 });
+    } catch (error) {
+        console.error('Error uploading resume:', error);
+        return NextResponse.json({ error: 'Failed to upload resume' }, { status: 500 });
+    }
+}
