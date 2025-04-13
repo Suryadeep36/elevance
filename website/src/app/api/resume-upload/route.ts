@@ -18,6 +18,7 @@ interface CloudinaryUploadResult {
 
 export async function POST(request: NextRequest) {
     const { userId } = await auth();
+    console.log(userId)
 
     if (!userId) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -32,8 +33,11 @@ export async function POST(request: NextRequest) {
     }
 
     try {
+        console.log("ok")
         const formData = await request.formData();
+        console.log(formData , " got it")
         const file = formData.get('file') as File | null;
+        console.log("file done ", file)
 
         if (!file) {
             return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
@@ -42,6 +46,8 @@ export async function POST(request: NextRequest) {
         if (!file.name.toLowerCase().endsWith('.pdf')) {
             return NextResponse.json({ error: 'Only PDF files are accepted' }, { status: 400 });
         }
+
+        console.log(file)
 
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);

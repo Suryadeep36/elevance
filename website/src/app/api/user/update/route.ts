@@ -25,6 +25,19 @@ export async function PUT(req: Request) {
     // Log the update for debugging
     console.log("Updating user with clerk_Id:", clerk_Id);
     console.log("Update data:", updateData);
+
+    if(updateData.resume != null && updateData.skills != null){
+      await UserModel.findOneAndUpdate(
+        { clerk_Id },
+        {
+          $set: {
+            resume: updateData.resume,
+            skills: [] 
+          }
+        },
+        { new: true }
+      );
+    }
     
     // Update the user
     const updatedUser = await UserModel.findOneAndUpdate(

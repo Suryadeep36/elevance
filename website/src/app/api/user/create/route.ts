@@ -8,7 +8,7 @@ export async function POST(req: Request) {
 
   try {
     const existing = await UserModel.findOne({ clerk_Id: data.clerk_Id });
-    if (existing) return NextResponse.json({ msg: 'User already exists' }, { status: 400 });
+    if (existing) return NextResponse.json({ msg: 'User already exists' }, { status: 200 });
 
     const user = await UserModel.create(data);
     return NextResponse.json(user);

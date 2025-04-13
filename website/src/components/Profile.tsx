@@ -10,13 +10,13 @@ interface ProfileData {
   clerk_Id?: string;
   name: string;
   email: string;
-  dob: string;
+  DOB: string;
   location: string;
   role: string;
   resume: null | { name: string; size: number; type: string; lastModified: number } | string;
   photo: null | string;
   profileImage: null | string;
-  experience: { id: number; company: string; position: string; duration: string; isEditing?: boolean }[];
+  experience: { id: number; company: string; position: string; isEditing?: boolean }[];
   jobs: Array<{ id: number; title: string; company: string; location: string }>;
   skills: string[];
   courses?: string[];
@@ -28,14 +28,14 @@ interface ProfileData {
 const defaultProfileData: ProfileData = {
   name: "user",
   email: "abc@gmail.com",
-  dob: "not added",
+  DOB: "not added",
   location: "San Francisco, CA",
   role: "USER",
   resume: null,
   photo: null,
   profileImage: null,
   experience: [
-    { id: 1, company: "TechCorp", position: "Senior Developer", duration: "2019-2023" },
+    { id: 1, company: "TechCorp", position: "Senior Developer" },
   ],
   jobs: [
     { id: 1, title: "Frontend Developer", company: "Innovate Inc.", location: "Remote" },
@@ -62,7 +62,7 @@ export default function ProfilePage() {
   // Fetch user data from MongoDB API
   const fetchUserData = async () => {
     if (!isLoaded || !isSignedIn || !user?.id) return;
-    
+    console.log(user.id)
     try {
       setIsLoading(true);
       // Fix the API endpoint call
@@ -227,13 +227,13 @@ export default function ProfilePage() {
     field: string; 
     value: string; 
     label: string;
-    icon: React.ElementType;
+    icon: React.ComponentType<{ className?: string }>;
     isEditing: boolean;
     isDate?: boolean;
   }) => (
     <div className="flex items-center gap-3">
       <div className="p-2 bg-purple-900/20 rounded-lg">
-        <Icon className="w-5 h-5 text-purple-400" />
+        {Icon && <Icon className="w-5 h-5 text-purple-400" />}
       </div>
       <div className="flex-1">
         <h3 className="text-sm font-medium text-gray-300">{label}</h3>
@@ -444,7 +444,9 @@ export default function ProfilePage() {
             resume: resumeUrl,
           }));
           toast.dismiss(loadingToast);
-          toast.warning("Resume uploaded but no skills were extracted.");
+          toast("Resume uploaded but no skills were extracted.", {
+            icon: "⚠️",
+          });
         }
       } catch (skillsError) {
         // If skills extraction fails, still save the resume URL
@@ -455,7 +457,9 @@ export default function ProfilePage() {
           resume: resumeUrl,
         }));
         toast.dismiss(loadingToast);
-        toast.warning("Resume uploaded but skills extraction failed.");
+        toast("Resume uploaded but skills extraction failed.", {
+          icon: "⚠️",
+        });
       }
     } catch (err) {
       toast.dismiss();
@@ -509,55 +513,7 @@ export default function ProfilePage() {
     }
   };
 
-  const addExperience = () => {
-    const newId: number =
-      profileData.experience.length > 0
-        ? Math.max(...profileData.experience.map((e: { id: number }) => e.id)) + 1
-        : 1;
 
-    setProfileData((prev: ProfileData) => ({
-      ...prev,
-      experience: [
-        ...prev.experience,
-        {
-          id: newId,
-          company: "",
-          position: "",
-          duration: "",
-          isEditing: true,
-        },
-      ],
-    }));
-  };
-
-  const updateExperience = async (
-    id: number,
-    updates: Partial<{ company: string; position: string; duration: string; isEditing?: boolean }>
-  ) => {
-    const updatedExperience = profileData.experience.map((exp) =>
-      exp.id === id ? { ...exp, ...updates, isEditing: false } : exp
-    );
-    
-    setProfileData((prev: ProfileData) => ({
-      ...prev,
-      experience: updatedExperience,
-    }));
-    
-    // Save to MongoDB
-    await saveUserData({ experience: updatedExperience });
-  };
-
-  const deleteExperience = async (id: number): Promise<void> => {
-    const updatedExperience = profileData.experience.filter((exp: { id: number }) => exp.id !== id);
-    
-    setProfileData((prev: ProfileData) => ({
-      ...prev,
-      experience: updatedExperience,
-    }));
-    
-    // Save to MongoDB
-    await saveUserData({ experience: updatedExperience });
-  };
 
   // View resume function
   const viewResume = () => {
@@ -678,11 +634,11 @@ export default function ProfilePage() {
                     {/* DOB field */}
                     <div className="flex items-center gap-3 mb-3">
                       <EditableField
-                        field="dob"
-                        value={profileData.dob !== "not added" ? profileData.dob : "Not specified"}
+                        field="DOB"
+                        value={profileData.DOB !== "not added" ? profileData.DOB : "Not specified"}
                         label="Date of Birth"
                         icon={Calendar}
-                        isEditing={editingField === "dob"}
+                        isEditing={editingField === "DOB"}
                         isDate={true}
                       />
                     </div>
@@ -907,326 +863,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {userType === "employee" && (
-              <div className="space-y-6">
-                <motion.div
-                  className="backdrop-blur-sm bg-white/5 rounded-2xl p-6 border border-gray-800 shadow-xl"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5 }}
-                >
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-semibold flex items-center">
-                      <Award size={18} className="text-purple-400 mr-2" />
-                      <span>Experience</span>
-                    </h3>
-                    <motion.button
-                      onClick={addExperience}
-                      className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white py-1.5 px-4 rounded-lg text-sm flex items-center shadow-lg shadow-purple-900/20"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <svg
-                        className="w-4 h-4 mr-1"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                      </svg>
-                      Add Experience
-                    </motion.button>
-                  </div>
-
-                  {profileData.experience?.length > 0 ? (
-                    <div className="space-y-4">
-                      {profileData.experience.map(
-                        (
-                          exp: {
-                            id: number;
-                            company: string;
-                            position: string;
-                            duration: string;
-                            isEditing?: boolean;
-                          },
-                          index
-                        ) => (
-                          <motion.div
-                            key={exp.id}
-                            className={`p-4 rounded-xl relative group backdrop-blur-sm ${
-                              exp.isEditing
-                                ? "bg-gray-800/80 border border-purple-500/50"
-                                : "bg-white/5 border border-gray-700/50 hover:border-purple-500/30 hover:bg-white/10"
-                            }`}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.3, delay: index * 0.1 }}
-                          >
-                            {exp.isEditing ? (
-                              <div className="space-y-3">
-                                <div className="relative">
-                                  <input
-                                    type="text"
-                                    placeholder="Position"
-                                    value={exp.position}
-                                    onChange={(e) =>
-                                      updateExperience(exp.id, { position: e.target.value })
-                                    }
-                                    className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 pl-9 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                  />
-                                  <Briefcase size={16} className="absolute left-3 top-3 text-gray-400" />
-                                </div>
-
-                                <div className="relative">
-                                  <input
-                                    type="text"
-                                    placeholder="Company"
-                                    value={exp.company}
-                                    onChange={(e) =>
-                                      updateExperience(exp.id, { company: e.target.value })
-                                    }
-                                    className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 pl-9 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                  />
-                                  <svg
-                                    className="w-4 h-4 absolute left-3 top-3 text-gray-400"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                                    />
-                                  </svg>
-                                </div>
-
-                                <div className="relative">
-                                  <input
-                                    type="text"
-                                    placeholder="Duration (e.g., 2019-2023)"
-                                    value={exp.duration}
-                                    onChange={(e) =>
-                                      updateExperience(exp.id, { duration: e.target.value })
-                                    }
-                                    className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 pl-9 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                  />
-                                  <svg
-                                    className="w-4 h-4 absolute left-3 top-3 text-gray-400"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                    />
-                                  </svg>
-                                </div>
-
-                                <div className="flex justify-end space-x-3 mt-2">
-                                  <motion.button
-                                    onClick={() => deleteExperience(exp.id)}
-                                    className="text-red-400 hover:text-red-300 text-sm py-1.5 px-3 rounded-lg bg-red-900/20 border border-red-800/30"
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                  >
-                                    Cancel
-                                  </motion.button>
-                                  <motion.button
-                                    onClick={() => updateExperience(exp.id, { isEditing: false })}
-                                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white py-1.5 px-4 rounded-lg text-sm"
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                  >
-                                    Save
-                                  </motion.button>
-                                </div>
-                              </div>
-                            ) : (
-                              <>
-                                <div className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1">
-                                  <motion.button
-                                    onClick={() => updateExperience(exp.id, { isEditing: true })}
-                                    className="text-gray-400 hover:text-purple-400 p-1.5 rounded-lg bg-gray-800/50 hover:bg-gray-800"
-                                    whileHover={{ scale: 1.1 }}
-                                    whileTap={{ scale: 0.9 }}
-                                  >
-                                    <svg
-                                      className="w-3.5 h-3.5"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                                      />
-                                    </svg>
-                                  </motion.button>
-                                  <motion.button
-                                    onClick={() => deleteExperience(exp.id)}
-                                    className="text-gray-400 hover:text-red-400 p-1.5 rounded-lg bg-gray-800/50 hover:bg-gray-800"
-                                    whileHover={{ scale: 1.1 }}
-                                    whileTap={{ scale: 0.9 }}
-                                  >
-                                    <svg
-                                      className="w-3.5 h-3.5"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                      />
-                                    </svg>
-                                  </motion.button>
-                                </div>
-
-                                <div className="flex items-start">
-                                  <div className="p-2.5 rounded-lg mr-4 bg-purple-900/20 flex items-center justify-center">
-                                    <Briefcase size={20} className="text-purple-400" />
-                                  </div>
-                                  <div>
-                                    <h4 className="font-semibold text-lg text-white">{exp.position}</h4>
-                                    <div className="flex items-center text-sm text-gray-400 mt-1">
-                                      <span className="font-medium text-purple-400">{exp.company}</span>
-                                      <span className="mx-2">•</span>
-                                      <span>{exp.duration}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              </>
-                            )}
-                          </motion.div>
-                        )
-                      )}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-10 border border-dashed border-gray-700 rounded-xl bg-gray-800/30">
-                      <Briefcase size={32} className="text-gray-600 mb-3" />
-                      <p className="text-gray-500 mb-3">No experience added yet</p>
-                      <motion.button
-                        onClick={addExperience}
-                        className="text-purple-400 hover:text-purple-300 flex items-center text-sm border border-purple-800/30 bg-purple-900/20 px-4 py-2 rounded-lg"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        <svg
-                          className="w-4 h-4 mr-1"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                        </svg>
-                        Add Experience
-                      </motion.button>
-                    </div>
-                  )}
-                </motion.div>
-
-                <motion.div
-                  className="backdrop-blur-sm bg-white/5 rounded-2xl p-6 border border-gray-800 shadow-xl"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.1 }}
-                >
-                  <h3 className="text-xl font-semibold mb-4 flex items-center">
-                    <Search size={18} className="text-purple-400 mr-2" />
-                    <span>Job Recommendations</span>
-                  </h3>
-
-                  {profileData.jobs?.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {profileData.jobs.map(
-                        (
-                          job: { id: number; title: string; company: string; location: string },
-                          index
-                        ) => (
-                          <motion.div
-                            key={job.id}
-                            className="p-4 rounded-xl border border-gray-700/50 bg-white/5 hover:border-purple-500/30 hover:bg-white/10 transition-all cursor-pointer group"
-                            whileHover={{ y: -5, scale: 1.02 }}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.3, delay: index * 0.1 }}
-                          >
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <h4 className="font-semibold text-white mb-1 group-hover:text-purple-400 transition-colors">
-                                  {job.title}
-                                </h4>
-                                <p className="text-sm text-gray-400">{job.company}</p>
-                                <div className="flex items-center mt-3 text-xs text-gray-500">
-                                  <svg
-                                    className="w-3.5 h-3.5 mr-1"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                                    />
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                                    />
-                                  </svg>
-                                  {job.location}
-                                </div>
-                              </div>
-                              <div className="p-1.5 rounded-full bg-gray-800 border border-gray-700 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <svg
-                                  className="w-4 h-4 text-purple-400"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                  xmlns="http://www.w3.org/2000/svg"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M14 5l7 7m0 0l-7 7m7-7H3"
-                                  />
-                                </svg>
-                              </div>
-                            </div>
-                          </motion.div>
-                        )
-                      )}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-10 border border-dashed border-gray-700 rounded-xl bg-gray-800/30">
-                      <Search size={32} className="text-gray-600 mb-3" />
-                      <p className="text-gray-500">No job recommendations yet</p>
-                      <p className="text-gray-600 text-sm mt-2">
-                        Add more skills to get personalized job matches
-                      </p>
-                    </div>
-                  )}
-                </motion.div>
-              </div>
-            )}
+            
 
             <motion.div
               className="backdrop-blur-sm bg-white/5 rounded-2xl p-6 border border-gray-800 shadow-xl mb-14"
