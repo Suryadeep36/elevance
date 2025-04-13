@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { FileUpload } from "@/components/ui/file-upload";
 import { X, UploadCloud, Image as ImageIcon, Check, XCircle, Loader2 } from "lucide-react";
 import Image from "next/image";
@@ -8,12 +8,12 @@ import { BrowserProvider } from "ethers";
 import { ethers } from "ethers";
 import { getBadgeContract } from "@/utils/badgeContract";
 import { useAuth, UserProfile, useUser } from "@clerk/nextjs";
+
+
 interface CourseResult {
   course_name: string;
   cluster: string;
 }
-
-
 
 interface VerificationResult {
   courses_found: CourseResult[];
@@ -29,21 +29,21 @@ const badgeMetadataMap: Record<string, { skill: string; tokenURI: string }> = {
     skill: "Machine Learning",
     tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreibxxlgv4dphmpglmyic35fezeqm5icxvgtl7fxnp3jynr4ricwxzm",
   },
-  "Frontend Developer": {
-    skill: "Frontend Developer",
-    tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreiasduaedmvs4l2xvzyxbvfyd5uy7nmxfvy4gttt6kywo44oholudq",
+  "Web Developer": {
+    skill: "Web Developer",
+    tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreid7ynhgat725ymwjx2oijltcyabottskoxeuiwxigwitw6tz2lnli",
   },
   "App Developer": {
     skill: "App Developer",
-    tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreie4rog6fes64w736yexqlvttdotfbro2ebgakyykknh7gxpvsdkoq",
+    tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreibu5n7fj4wvs6vsl5kzgztr2rj3xufs2kryxxzyqxmeib2vngpw24",
   },
-  "Backend Developer": {
-    skill: "Backend Developer",
-    tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreia7alc4mgxjj54evueiomapt7p5umcnzq3yneu4wdldpc6lx34ys4",
+  "Cybersecurity Engineer": {
+    skill: "Cybersecurity Engineer",
+    tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreiat3tkr2p5w33vnnqnhqv5hcgwqwdna23mbgukh2v2vrwhdjmjyfm",
   },
   "Cloud Dev": {
     skill: "Cloud Engineer",
-    tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreifhrsqusx3rd2nbaq2y22564uyf4bvslimvom6dx5xemjc23wtfra",
+    tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreigwi7lcc6rrpu4vurf7agztb6vmdqsk556au4xymlxmo3hswgmi24",
   },
 };
 
@@ -63,21 +63,65 @@ const mintBadge = async (cluster: string) => {
   const contract = getBadgeContract(signer);
 
   try {
-    const tx = await contract.mintBadge(userAddress, metadata.skill, metadata.tokenURI);
-    await tx.wait();
-    alert("Badge minted successfully!");
+    console.log(userAddress + " " + cluster)
+    const tx = await contract.mintBadge(userAddress, cluster);
+    const receipt = await tx.wait();
+
+    // Extract BadgeMinted event
+    const event = receipt.logs
+      .map((log : any) => {
+        try {
+          return contract.interface.parseLog(log);
+        } catch (err) {
+          return null;
+        }
+      })
+      .find((parsed : any) => parsed?.name === "BadgeMinted");
+
+    if (!event) {
+      console.error("Event not found in tx");
+      return;
+    }
+
+    const tokenId = event.args.tokenId.toString();
+    const tokenURI = event.args.tokenURI;
+    const imageUrl = tokenURI.startsWith('ipfs://')
+      ? `https://gateway.pinata.cloud/ipfs/${tokenURI.replace('ipfs://', '')}`
+      : tokenURI;
+
+  
+    await axios.post('/api/add-badge', {
+      clerk_Id: user?.id,
+      badge: {
+        cluster,
+        imageUrl,
+        tokenId
+      }
+    });
+    alert('Badge minted and added to user!');
   } catch (error) {
     console.error("Minting failed:", error);
     alert("Minting failed. Check console.");
   }
 };
 
+
+
 export default function Page() {
+  const {isLoaded, user} = useUser();
+  const {isSignedIn} = useAuth();
+  const [username, setUsername] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { isLoaded, user } = useUser();
-  const { userId } = useAuth()
+  
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn && user?.fullName) {
+      setUsername(user.fullName);
+    }
+  }, [isLoaded, isSignedIn, user]);
+
   const handleFileUpload = (uploadedFiles: File[]) => {
     setFiles(uploadedFiles);
     setVerificationResult(null);

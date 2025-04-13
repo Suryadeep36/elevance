@@ -8,6 +8,8 @@ export interface Experience extends Document {
 interface Badge {
     cluster: string;
     imageUrl: string;
+    tokenId: String;
+    mintedAt?: Date;
   }
 export interface User extends Document {
   clerk_Id: string;
@@ -23,13 +25,13 @@ export interface User extends Document {
   experience: Experience[];
   courses: string[];
   certificates: string[];
-  badges: string[];
+  badges: Badge[];
 }
 const BadgeSchema = new Schema({
     cluster: { type: String, required: true },
     imageUrl: { type: String, required: true },
-    mintedAt: { type: Date, default: Date.now },
-    tokenId: { type: String }
+    tokenId: { type: String },
+    mintedAt: { type: Date, default: Date.now }
   });
 
 const UserSchema: Schema<User> = new Schema({
