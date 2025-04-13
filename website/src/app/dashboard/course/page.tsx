@@ -31,18 +31,12 @@ export default function CareerRecommender() {
         e.preventDefault();
         setLoading(true);
         setError('');
-
         try {
-            const response = await axios.post('http://localhost:8000/recommend-career-path', {
-                name: "User",
-                current_skills: [],
-                desired_skills: desiredSkills.split(',').map(skill => skill.trim()),
-                level: "Intermediate",
-                experience_years: 0,
-                education: "",
-                preferred_platforms: ["Coursera"],
-                location_preference: "Remote"
-            });
+            const skillsArray = desiredSkills
+                .split(',')
+                .map(skill => skill.trim())
+                .filter(skill => skill.length > 0); 
+            const response = await axios.post('http://localhost:8000/recommend-career-path', skillsArray);
             setRecommendations(response.data.recommended_careers);
         } catch (err) {
             setError('Failed to get recommendations. Please try again.');
