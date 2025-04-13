@@ -114,6 +114,8 @@ export default function Page() {
   const [isLoading, setIsLoading] = useState(false);
   
 
+  const { userId } = useAuth()
+ 
   useEffect(() => {
     if (isLoaded && isSignedIn && user?.fullName) {
       setUsername(user.fullName);
@@ -150,13 +152,50 @@ export default function Page() {
           },
         }
       );
-      const clustorName = response.data.courses_found[0].cluster;
-      console.log(clustorName)
-      if (response.data.valid_certificate && response.data.platform_verified) {
-        await mintBadge(clustorName, user);
-        console.log('Badge added:', response.data);
-      }  
-      setVerificationResult(response.data);
+      if (response.data.valid_certificate == true) {
+
+        const clustor = response.data.courses_found[0].cluster;
+        if (response.data.valid_certificate && response.data.platform_verified) {
+          await mintBadge(clustor, user);
+        }
+        setVerificationResult(response.data);
+
+        const newForm = new FormData()
+        newForm.append('file', files[0]);
+        if (!userId) {
+          console.log('user id not found');
+          return;
+        }
+        newForm.append('userId', userId);
+        const urlObjet = await axios.post("/api/certificate", newForm);
+        // Extract the URL from the response
+        const certificateUrl = urlObjet.data?.url?.url;
+        console.log(urlObjet)
+        console.log(certificateUrl)
+        await axios.put('/api/user/update', {
+          certificates: [certificateUrl], // Send just the URL string
+          clerk_Id: userId
+        });
+
+
+      }
+      const newForm = new FormData()
+      newForm.append('file', files[0]);
+      if (!userId) {
+        console.log('user id not found');
+        return;
+      }
+      newForm.append('userId', userId);
+      const urlObjet = await axios.post("/api/certificate", newForm);
+      // Extract the URL from the response
+      const certificateUrl = urlObjet.data?.url?.url;
+      console.log(urlObjet)
+      console.log(certificateUrl)
+      await axios.put('/api/user/update', {
+        certificates: [certificateUrl], // Send just the URL string
+        clerk_Id: userId
+      });
+
     } catch (error) {
       console.error("Verification failed:", error);
       setVerificationResult({ 
