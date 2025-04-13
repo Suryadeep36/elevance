@@ -49,32 +49,6 @@ export default function CareerRecommender() {
         setDesiredSkills(e.target.value);
     };
 
-    const generateHTML = (careerPaths: any) => {
-        let html = `
-          <div style="font-family: Arial, sans-serif; color: #333;">
-            <h2>Hello,</h2>
-            <p>Based on the skills you provided, here are some recommended career paths for you:</p>
-            <ul style="padding-left: 20px;">
-        `;
-
-        careerPaths.forEach((path: any) => {
-            html += `
-            <li style="margin-bottom: 15px;">
-              <strong>${path.title}</strong><br/>
-              <span>${path.description}</span>
-            </li>
-          `;
-        });
-
-        html += `
-            </ul>
-            <p>Best regards,<br/>Career Recommendation Team</p>
-          </div>
-        `;
-
-        return html;
-    };
-
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -90,11 +64,16 @@ export default function CareerRecommender() {
 
             const careerPaths = response.data.recommendedCareerPaths;
 
-            const html = generateHTML(careerPaths);
+            const html = <h1>Recommendation of cource based on skills</h1>
 
             const subject = "Recommendation of cource based on skills" + skillsArray;
             const text = `Hello, Based on the skills you provided, here are some recommended career paths for you:\n\n`;
             const to = user?.primaryEmailAddress?.emailAddress
+
+            if(!to){
+                setError('Please sign in to get email recommendations.');
+                return;
+            }
 
             sendEmail(to, subject, text, html);
         } catch (err) {
