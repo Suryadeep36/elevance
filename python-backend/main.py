@@ -496,4 +496,26 @@ def recommend_career_path(desired_skils : List[str]):
             })
         
         return {"recommended_careers": recommendations}
-    
+
+model = SentenceTransformer('all-MiniLM-L6-v2')    
+class SkillInput(BaseModel):
+    skills: str  # e.g. "Machine Learning, Deep Learning, Data Science"
+
+@app.post("/recommend-roles")
+def recommend_roles(user_input: SkillInput):
+    df_roles = pd.DataFrame(roles)
+
+    # Create embeddings
+    role_texts = [
+        f"{role['title']} {role['description']} {' '.join(role['skills'])}" for role in roles
+    ]
+    role_embeddings = model.encode(role_texts)
+    user_embedding = model.encode([user_input.skills])
+
+    # Compute similarity
+    similarities = cosine_similarity(user_embedding, role_embeddings)[0]
+    df_roles["match_score"] = similarities
+    df_roles_sorted = df_roles.sort_values(by="match_score", ascending=False).reset_index(drop=True)
+    top_roles = df_roles_sorted.head(5).to_dict(orient="records")
+
+    return {"recommended_roles": top_roles}
