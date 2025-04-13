@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { User, Briefcase, Search, Compass, Map, Settings, LogOut, ChevronLeft, ChevronRight, Home, BarChart3, Sparkles } from 'lucide-react';
+import { User, Briefcase, Search, Compass, Map, Settings, LogOut, ChevronLeft, ChevronRight, Home, BarChart3, Sparkles, GrapeIcon } from 'lucide-react';
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const [collapsed, setCollapsed] = useState(false);
@@ -21,7 +21,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     { name: 'Network', href: '/dashboard/network', icon: Map },
     { name: 'Certificates', href: '/dashboard/certificates', icon: BarChart3 },
     { name: 'Course', href: '/dashboard/course', icon: Search },
-    { name: 'Resume and Interview', href: '/dashboard/resume_and_interview_tips', icon: Home },  
+    { name: 'Resume and Interview', href: '/dashboard/resume_and_interview_tips', icon: Home },
+    { name: 'Skills Analysis', href: '/dashboard/graph', icon: GrapeIcon },
   ];
 
   // Animations
