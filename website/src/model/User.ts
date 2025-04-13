@@ -5,6 +5,10 @@ export interface Experience extends Document {
   position: string;
 }
 
+interface Badge {
+    cluster: string;
+    imageUrl: string;
+  }
 export interface User extends Document {
   clerk_Id: string;
   name: string;
@@ -19,8 +23,14 @@ export interface User extends Document {
   experience: Experience[];
   courses: string[];
   certificates: string[];
-  bedges: string[];
+  badges: string[];
 }
+const BadgeSchema = new Schema({
+    cluster: { type: String, required: true },
+    imageUrl: { type: String, required: true },
+    mintedAt: { type: Date, default: Date.now },
+    tokenId: { type: String }
+  });
 
 const UserSchema: Schema<User> = new Schema({
   clerk_Id: { type: String, required: true, unique: true },
@@ -36,12 +46,18 @@ const UserSchema: Schema<User> = new Schema({
   experience: [{ company: { type: String }, position: { type: String } }],
   courses: [{ type: String }],
   certificates: [{ type: String }],
-  bedges: [{ type: String }]
+  badges: [BadgeSchema]
 });
 
 
 
-const UserModel = mongoose.models.User || mongoose.model<User>('User', UserSchema);
+
+
+
+  
+const UserModel = (mongoose.models.User as mongoose.Model<User>) || mongoose.model<User>('User', UserSchema);
+
+
 
 
 export default UserModel;

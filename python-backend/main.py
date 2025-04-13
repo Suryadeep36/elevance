@@ -260,11 +260,11 @@ async def suggest_career(files: List[UploadFile] = File(...)):
     cluster_to_career = {}
     for cluster_num, skills in cluster_to_top_skills.items():
         if "machine learning" in skills or "pytorch" in skills or "tensorflow" in skills:
-            cluster_to_career[cluster_num] = "Machine Learning Engineer"
+            cluster_to_career[cluster_num] = "Machine Learning"
         elif "html" in skills or "css" in skills or "javascript" in skills:
-            cluster_to_career[cluster_num] = "Frontend Web Developer"
+            cluster_to_career[cluster_num] = "Frontend Developer"
         elif "django" in skills or "flask" in skills or "sql" in skills:
-            cluster_to_career[cluster_num] = "Backend Web Developer"
+            cluster_to_career[cluster_num] = "Backend Developer"
         elif "flutter" in skills or "android" in skills:
             cluster_to_career[cluster_num] = "App Developer"
         elif "docker" in skills or "linux" in skills or "aws" in skills:

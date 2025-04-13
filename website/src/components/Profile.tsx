@@ -55,7 +55,7 @@ export default function ProfilePage() {
 
   // For role editing dropdown
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
-  
+
   const { isLoaded, user } = useUser();
   const { isSignedIn } = useAuth();
 
@@ -67,7 +67,7 @@ export default function ProfilePage() {
       setIsLoading(true);
       // Fix the API endpoint call
       const response = await axios.get(`/api/user/${user.id}`);
-      
+
       if (response.data && response.data.user) {
         // Transform the MongoDB data to match our component's data structure
         const userData = {
@@ -78,9 +78,9 @@ export default function ProfilePage() {
           photo: response.data.user.profileImage || user?.imageUrl || "/favicon.png",
           profileImage: response.data.user.profileImage || user?.imageUrl || "/favicon.png",
         };
-        
+
         setProfileData(userData);
-        
+
         // Also set user type if available
         if (response.data.user.role === "RECRUITER") {
           setUserType("recruiter");
@@ -120,7 +120,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     setIsClient(true);
-    
+
     // Load user type from localStorage as a backup
     const savedUserType = localStorage.getItem("userType") || "";
     if (!userType && savedUserType) {
@@ -137,13 +137,13 @@ export default function ProfilePage() {
   // Function to save data to MongoDB
   const saveUserData = async (data: Partial<ProfileData>) => {
     if (!isSignedIn || !user?.id) return;
-    
+
     try {
       const response = await axios.put(`/api/user/update`, {
         clerk_Id: user.id,
         ...data
       });
-      
+
       if (response.data && response.data.success) {
         toast.success("Profile updated successfully!");
         return true;
@@ -173,16 +173,16 @@ export default function ProfilePage() {
   // Save edited field - Fix to ensure MongoDB update works
   const saveEditing = async () => {
     if (!editingField) return;
-    
+
     try {
       toast.loading("Updating...");
-      
+
       // Create update object
       const updateData = { [editingField]: editValue };
-      
+
       // Save to MongoDB first to ensure it works
       const saveResult = await saveUserData(updateData);
-      
+
       if (saveResult) {
         // Only update local state if MongoDB update was successful
         setProfileData((prev: ProfileData) => ({
@@ -210,22 +210,22 @@ export default function ProfilePage() {
       const newData: ProfileData = { ...prev, [field]: value };
       return newData;
     });
-    
+
     // Save to MongoDB
     await saveUserData({ [field]: value });
   };
 
   // Edit field component
-  const EditableField = ({ 
-    field, 
-    value, 
-    label, 
+  const EditableField = ({
+    field,
+    value,
+    label,
     icon: Icon,
     isEditing,
     isDate = false
-  }: { 
-    field: string; 
-    value: string; 
+  }: {
+    field: string;
+    value: string;
     label: string;
     icon: React.ComponentType<{ className?: string }>;
     isEditing: boolean;
@@ -249,7 +249,7 @@ export default function ProfilePage() {
               />
             ) : field === "role" ? (
               <div className="relative w-full">
-                <button 
+                <button
                   className="w-full bg-gray-800 border border-gray-700 rounded-md p-2 text-left text-white text-sm flex justify-between items-center"
                   onClick={() => setShowRoleDropdown(!showRoleDropdown)}
                 >
@@ -260,7 +260,7 @@ export default function ProfilePage() {
                 </button>
                 {showRoleDropdown && (
                   <div className="absolute z-10 w-full mt-1 bg-gray-800 border border-gray-700 rounded-md shadow-lg">
-                    <div 
+                    <div
                       className="p-2 hover:bg-gray-700 cursor-pointer"
                       onClick={() => {
                         setEditValue("USER");
@@ -269,7 +269,7 @@ export default function ProfilePage() {
                     >
                       USER
                     </div>
-                    <div 
+                    <div
                       className="p-2 hover:bg-gray-700 cursor-pointer"
                       onClick={() => {
                         setEditValue("RECRUITER");
@@ -291,7 +291,7 @@ export default function ProfilePage() {
               />
             )}
             <div className="flex ml-2">
-              <button 
+              <button
                 className="text-green-500 hover:text-green-400 mr-2"
                 onClick={saveEditing}
               >
@@ -299,7 +299,7 @@ export default function ProfilePage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </button>
-              <button 
+              <button
                 className="text-red-500 hover:text-red-400"
                 onClick={cancelEditing}
               >
@@ -312,7 +312,7 @@ export default function ProfilePage() {
         ) : (
           <div className="flex items-center">
             <p className="text-white font-semibold">{value}</p>
-            <button 
+            <button
               onClick={() => startEditing(field, value)}
               className="ml-2 p-1 hover:bg-gray-700 rounded-full"
             >
@@ -367,15 +367,15 @@ export default function ProfilePage() {
     try {
       // First, display loading state
       const loadingToast = toast.loading("Processing resume...");
-      
+
       // Create form data for file upload
       const formData = new FormData();
       formData.append("file", file);
       formData.append("clerk_Id", user?.id || "");
-      
+
       // Upload to Cloudinary through our API
       const uploadResponse = await axios.post(
-        "/api/resume-upload", 
+        "/api/resume-upload",
         formData,
         {
           headers: {
@@ -383,16 +383,16 @@ export default function ProfilePage() {
           },
         }
       );
-      
+
       if (!uploadResponse.data?.success) {
         toast.dismiss(loadingToast);
         throw new Error("Resume upload failed");
       }
-      
+
       // Get the cloudinary URL from the response
       const resumeUrl = uploadResponse.data.url;
       console.log("Resume uploaded to:", resumeUrl);
-      
+
       // Extract skills from resume using the Python model
       try {
         const skillsResponse = await axios.post<SkillsResponse>(
@@ -404,25 +404,25 @@ export default function ProfilePage() {
             },
           }
         );
-  
+
         if (skillsResponse.data?.extracted_skills) {
           const currentSkills = Array.isArray(profileData.skills) ? profileData.skills : [];
-          const newSkills = Array.isArray(skillsResponse.data.extracted_skills) 
-            ? skillsResponse.data.extracted_skills 
+          const newSkills = Array.isArray(skillsResponse.data.extracted_skills)
+            ? skillsResponse.data.extracted_skills
             : [];
-  
+
           // Log extracted skills
           console.log("Extracted skills:", newSkills);
-  
+
           // Combine existing and new skills, removing duplicates
           const updatedSkills = [...new Set([...currentSkills, ...newSkills])];
-          
+
           // Save resume URL and skills to MongoDB
           const saveResult = await saveUserData({
             resume: resumeUrl,
             skills: updatedSkills,
           });
-  
+
           if (saveResult) {
             // Update local state only if MongoDB update was successful
             setProfileData((prev) => ({
@@ -471,12 +471,12 @@ export default function ProfilePage() {
   const addSkill = async () => {
     if (newSkill.trim() && !profileData.skills.includes(newSkill.trim())) {
       const updatedSkills = [...(Array.isArray(profileData.skills) ? profileData.skills : []), newSkill.trim()];
-      
+
       setProfileData((prev) => ({
         ...prev,
         skills: updatedSkills,
       }));
-      
+
       // Save to MongoDB
       await saveUserData({ skills: updatedSkills });
       setNewSkill("");
@@ -487,12 +487,12 @@ export default function ProfilePage() {
     const updatedSkills = Array.isArray(profileData.skills)
       ? profileData.skills.filter((skill) => skill !== skillToRemove)
       : [];
-    
+
     setProfileData((prev) => ({
       ...prev,
       skills: updatedSkills,
     }));
-    
+
     // Save to MongoDB
     await saveUserData({ skills: updatedSkills });
   };
@@ -502,12 +502,12 @@ export default function ProfilePage() {
       const updatedSkills = Array.isArray(profileData.skills)
         ? profileData.skills.map((skill) => (skill === oldSkill ? newSkill.trim() : skill))
         : [newSkill.trim()];
-      
+
       setProfileData((prev) => ({
         ...prev,
         skills: updatedSkills,
       }));
-      
+
       // Save to MongoDB
       await saveUserData({ skills: updatedSkills });
     }
@@ -680,7 +680,7 @@ export default function ProfilePage() {
                         <span className="text-gray-300 truncate flex-1 text-sm">
                           Resume uploaded
                         </span>
-                        <button 
+                        <button
                           onClick={viewResume}
                           className="text-purple-400 hover:text-purple-300 text-xs px-2 py-1 rounded bg-purple-900/30"
                         >
@@ -737,69 +737,7 @@ export default function ProfilePage() {
                 <Sparkles size={18} className="text-purple-400 mr-2" />
                 <span>I am a</span>
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <motion.label
-                  className="relative"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <input
-                    type="radio"
-                    name="userType"
-                    value="employee"
-                    checked={userType === "employee"}
-                    onChange={() => setUserType("employee")}
-                    className="sr-only peer"
-                  />
-                  <div
-                    className={`cursor-pointer rounded-xl p-5 border transition-all duration-300 
-                    ${
-                      userType === "employee"
-                        ? "border-purple-500 bg-gradient-to-br from-purple-900/30 to-blue-900/30 shadow-lg shadow-purple-900/10"
-                        : "border-gray-700 hover:border-gray-600 bg-gray-800/50"
-                    }`}
-                  >
-                    <div className="flex items-start">
-                      <div
-                        className={`p-3 rounded-lg mr-4 transition-colors ${
-                          userType === "employee" ? "bg-purple-900/30" : "bg-gray-700/50"
-                        }`}
-                      >
-                        <Briefcase
-                          size={24}
-                          className={userType === "employee" ? "text-purple-400" : "text-gray-400"}
-                        />
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-lg">Employee</h4>
-                        <p className="text-gray-400 mt-1 text-sm">
-                          I'm looking for job opportunities and want to showcase my professional
-                          experience.
-                        </p>
-                      </div>
-                    </div>
-
-                    {userType === "employee" && (
-                      <motion.div
-                        className="absolute -right-2 -top-2 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center"
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: "spring", stiffness: 500, damping: 15 }}
-                      >
-                        <svg
-                          className="w-4 h-4 text-white"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </motion.div>
-                    )}
-                  </div>
-                </motion.label>
-
+              <div className="grid grid-cols-1 gap-4">
                 <motion.label
                   className="relative"
                   whileHover={{ scale: 1.02 }}
@@ -815,17 +753,15 @@ export default function ProfilePage() {
                   />
                   <div
                     className={`cursor-pointer rounded-xl p-5 border transition-all duration-300
-                    ${
-                      userType === "student"
+        ${userType === "student"
                         ? "border-purple-500 bg-gradient-to-br from-purple-900/30 to-blue-900/30 shadow-lg shadow-purple-900/10"
                         : "border-gray-700 hover:border-gray-600 bg-gray-800/50"
-                    }`}
+                      }`}
                   >
                     <div className="flex items-start">
                       <div
-                        className={`p-3 rounded-lg mr-4 transition-colors ${
-                          userType === "student" ? "bg-purple-900/30" : "bg-gray-700/50"
-                        }`}
+                        className={`p-3 rounded-lg mr-4 transition-colors ${userType === "student" ? "bg-purple-900/30" : "bg-gray-700/50"
+                          }`}
                       >
                         <BookOpen
                           size={24}
@@ -863,7 +799,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            
+
 
             <motion.div
               className="backdrop-blur-sm bg-white/5 rounded-2xl p-6 border border-gray-800 shadow-xl mb-14"
@@ -944,7 +880,7 @@ export default function ProfilePage() {
             </motion.div>
           </motion.div>
         </div>
-        
+
         <div className="h-10 md:h-20"></div>
       </div>
     </div>
