@@ -21,7 +21,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     { name: 'Network', href: '/dashboard/network', icon: Map },
     { name: 'Certificates', href: '/dashboard/certificates', icon: BarChart3 },
     { name: 'Course', href: '/dashboard/course', icon: Search },
-    { name: 'Resume and Interview', href: '/dashboard/resume_and_interview', icon: Home },  
+    { name: 'Resume and Interview', href: '/dashboard/resume_and_interview_tips', icon: Home },  
   ];
 
   // Animations

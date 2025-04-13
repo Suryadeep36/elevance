@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import { Code, Lightbulb, TrendingUp, Briefcase, ArrowRight } from "lucide-react";
 import JobInsights from "@/components/JobInsights";
+import { useAuth } from "@clerk/nextjs";
 
 // This would be your existing Insights component
 const Insights = () => {
@@ -30,29 +31,15 @@ const Recommendations = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<'all' | 'jobs' | 'courses' | 'skills'>('all');
-
+  const {userId} = useAuth()
   // Load skills from localStorage
-  useEffect(() => {
-    try {
-      // Try to get skills from localStorage
-      const profileData = localStorage.getItem('profileData');
-      const savedSkills = localStorage.getItem('skills');
+  const apiCall = async() => {
+    const api = await axios.get(`/api/user/${userId}`)
+    const data = api.data;
+    console.log(data)
+    setSkills(data.user.skills)
+  }
 
-      if (savedSkills) {
-        setSkills(JSON.parse(savedSkills));
-      } else if (profileData) {
-        // If no dedicated skills key, try to extract from profile data
-        const parsedData = JSON.parse(profileData);
-        if (parsedData.skills && Array.isArray(parsedData.skills)) {
-          setSkills(parsedData.skills);
-        }
-        console.log(parsedData)
-      }
-    } catch (err) {
-      console.error("Error loading skills from localStorage:", err);
-      setSkills([]);
-    }
-  }, []);
 
   // Function to convert API job data to recommendation format
   interface Job {
@@ -77,6 +64,7 @@ const Recommendations = () => {
   useEffect(() => {
     const fetchRecommendations = async () => {
       if (skills.length === 0) {
+        apiCall()
         setRecommendations([]);
         setLoading(false);
         return;
@@ -88,6 +76,7 @@ const Recommendations = () => {
       try {
         // This would be your actual API endpoint
         // This would be your actual API endpoint
+        
         console.log(skills)
         const response = await axios.post('http://localhost:8000/recommend-jobs', skills);
 

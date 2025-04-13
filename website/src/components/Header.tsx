@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react'
+import React from 'react';
 import { useEffect, useState } from 'react';
 import { UserButton, useAuth } from '@clerk/nextjs';
 import Link from 'next/link';
@@ -55,35 +55,38 @@ function Header() {
           >
             <Link
               href="/"
-              className={`font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-[#0a1120] rounded px-2 py-1 ${isActivePath('/')
-                  ? 'text-blue-400 border-b-2 border-blue-400'
-                  : 'text-gray-200 hover:text-blue-400'
-                }`}
-            >
-              Home
-            </Link>
-            {/* <Link 
-              href="/dashboard" 
               className={`font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-[#0a1120] rounded px-2 py-1 ${
-                isActivePath('/dashboard') 
-                  ? 'text-blue-400 border-b-2 border-blue-400' 
+                isActivePath('/')
+                  ? 'text-blue-400 border-b-2 border-blue-400'
                   : 'text-gray-200 hover:text-blue-400'
               }`}
             >
-              Dashboard
-            </Link> */}
+              Home
+            </Link>
 
             {isSignedIn && (
-              <Link
-                href="/dashboard"
-                className={`font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-[#0a1120] rounded px-2 py-1 ${isActivePath('/dashboard')
-
-                    ? 'text-blue-400 border-b-2 border-blue-400'
-                    : 'text-gray-200 hover:text-blue-400'
+              <>
+                <Link
+                  href="/dashboard"
+                  className={`font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-[#0a1120] rounded px-2 py-1 ${
+                    isActivePath('/dashboard')
+                      ? 'text-blue-400 border-b-2 border-blue-400'
+                      : 'text-gray-200 hover:text-blue-400'
                   }`}
-              >
-                Dashboard
-              </Link>
+                >
+                  Dashboard
+                </Link>
+                <Link
+                  href="/leaderboard"
+                  className={`font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-[#0a1120] rounded px-2 py-1 ${
+                    isActivePath('/leaderboard')
+                      ? 'text-blue-400 border-b-2 border-blue-400'
+                      : 'text-gray-200 hover:text-blue-400'
+                  }`}
+                >
+                  Leaderboard
+                </Link>
+              </>
             )}
           </motion.nav>
 
@@ -147,24 +150,41 @@ function Header() {
               <nav className="flex flex-col gap-4 mb-6">
                 <Link
                   href="/"
-                  className={`px-4 py-2 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-blue-400 ${isActivePath('/')
+                  className={`px-4 py-2 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-blue-400 ${
+                    isActivePath('/')
                       ? 'bg-blue-900/50 text-blue-300'
                       : 'text-gray-200 hover:bg-blue-900/30'
-                    }`}
+                  }`}
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Home
                 </Link>
-                <Link
-                  href="/dashboard"
-                  className={`px-4 py-2 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-blue-400 ${isActivePath('/dashboard')
-                      ? 'bg-blue-900/50 text-blue-300'
-                      : 'text-gray-200 hover:bg-blue-900/30'
-                    }`}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Dashboard
-                </Link>
+                {isSignedIn && (
+                  <>
+                    <Link
+                      href="/dashboard"
+                      className={`px-4 py-2 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-blue-400 ${
+                        isActivePath('/dashboard')
+                          ? 'bg-blue-900/50 text-blue-300'
+                          : 'text-gray-200 hover:bg-blue-900/30'
+                      }`}
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Dashboard
+                    </Link>
+                    <Link
+                      href="/leaderboard"
+                      className={`px-4 py-2 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-blue-400 ${
+                        isActivePath('/leaderboard')
+                          ? 'bg-blue-900/50 text-blue-300'
+                          : 'text-gray-200 hover:bg-blue-900/30'
+                      }`}
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Leaderboard
+                    </Link>
+                  </>
+                )}
               </nav>
 
               {isLoaded && (
@@ -189,7 +209,7 @@ function Header() {
         )}
       </AnimatePresence>
     </header>
-  )
+  );
 }
 
-export default Header
+export default Header;
