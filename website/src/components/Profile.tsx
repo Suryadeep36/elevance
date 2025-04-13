@@ -839,17 +839,17 @@ export default function ProfilePage() {
                         <div className="w-16 h-16 mb-3 relative">
                           <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-500/20 to-blue-500/20 animate-pulse"></div>
                           <img 
-                            src={badge.imageUrl} 
+                            src={'/bedge.png'} 
                             alt={badge.cluster} 
-                            className="w-full h-full object-contain relative z-10" 
+                            className="w-full h-full scale-230 object-contain relative z-10" 
                             onError={(e) => {
                               (e.target as HTMLImageElement).src = '/badge-placeholder.png'; // Fallback image
                             }}
                           />
                         </div>
-                        <h4 className="text-sm font-medium text-center text-white group-hover:text-purple-300 transition-colors">
+                        {/* <h4 className="text-sm font-medium text-center text-white group-hover:text-purple-300 transition-colors">
                           {badge.cluster}
-                        </h4>
+                        </h4> */}
                         <div className="mt-2 text-xs text-center text-gray-400">
                           Minted: {new Date(badge.mintedAt).toLocaleDateString()}
                         </div>
