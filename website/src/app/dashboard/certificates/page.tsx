@@ -156,7 +156,7 @@ export default function Page() {
 
         const clustor = response.data.courses_found[0].cluster;
         if (response.data.valid_certificate && response.data.platform_verified) {
-          await mintBadge(clustor, user);
+          await mintBadge(clustor, username);
         }
         setVerificationResult(response.data);
 
