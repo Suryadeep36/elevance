@@ -6,6 +6,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import ChatbotButton from '@/components/ChatbotButton'
 import ThemeProvider from '@/providers/theme-provider'
 import { neobrutalism } from '@clerk/themes';
 import { Analytics } from '@vercel/analytics/react'
@@ -80,8 +81,8 @@ export default function RootLayout({
             <div className='min-h-screen flex flex-col '>
               <Header />
               <main className='flex-grow'>{children}</main>
-              
               <Footer />
+              <ChatbotButton />
             </div>
           </ThemeProvider>
         </body>

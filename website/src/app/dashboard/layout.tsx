@@ -16,14 +16,12 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
   const navItems = [
     { name: 'Profile', href: '/dashboard', icon: User },
-    { name: 'Explore', href: '/dashboard/explore', icon: Compass },
+    { name: 'Skill Assessment', href: '/dashboard/skill_assessment', icon: Compass },
     { name: 'Jobs', href: '/dashboard/jobs', icon: Briefcase },
     { name: 'Network', href: '/dashboard/network', icon: Map },
-  ];
-
-  const secondaryNavItems = [
-    { name: 'Settings', href: '/settings', icon: Settings },
-    { name: 'Log Out', href: '/logout', icon: LogOut },
+    { name: 'Certificates', href: '/dashboard/certificates', icon: BarChart3 },
+    { name: 'Course', href: '/dashboard/course', icon: Search },
+    { name: 'Resume and Interview', href: '/dashboard/resume_and_interview', icon: Home },  
   ];
 
   // Animations
@@ -41,7 +39,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     <div className="min-h-screen flex bg-gradient-to-br from-gray-900 to-gray-950 text-white mt-10">
       {/* Sidebar */}
       <motion.div 
-        className="fixed top-0 left-0 h-full bg-gray-900 border-r border-gray-800 z-10 shadow-xl overflow-hidden backdrop-blur-sm bg-opacity-80"
+        className="mt-20 fixed top-0 left-0 h-full bg-gray-900 border-r border-gray-800 z-10 shadow-xl overflow-hidden backdrop-blur-sm bg-opacity-80"
         initial="expanded"
         animate={collapsed ? 'collapsed' : 'expanded'}
         variants={sidebarVariants}
@@ -114,68 +112,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 );
               })}
             </div>
-
-            {!collapsed && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="mt-8 mb-4 px-3"
-              >
-                <div className="border-t border-gray-800 pt-4">
-                  <h5 className="text-xs uppercase text-gray-500 font-medium tracking-wider mb-3">Account</h5>
-                </div>
-              </motion.div>
-            )}
-
-            {/* Secondary nav items */}
-            <div className="space-y-1 mt-4">
-              {secondaryNavItems.map((item) => {
-                const IconComponent = item.icon;
-                
-                return (
-                  <Link key={item.href} href={item.href} passHref>
-                    <motion.div
-                      className="flex items-center p-3 rounded-xl text-gray-400 hover:bg-gray-800/50 hover:text-white cursor-pointer"
-                      whileHover={{ x: 4 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <IconComponent size={20} />
-                      
-                      {!collapsed && (
-                        <motion.span 
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -10 }}
-                          className="ml-3 whitespace-nowrap"
-                        >
-                          {item.name}
-                        </motion.span>
-                      )}
-                    </motion.div>
-                  </Link>
-                );
-              })}
-            </div>
           </div>
-
-          {/* User profile */}
-          {!collapsed && (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="p-4 border-t border-gray-800"
-            >
-              <div className="flex items-center space-x-3">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center">
-                  <span className="font-medium text-sm text-white">JP</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">John Patel</p>
-                  <p className="text-xs text-gray-400 truncate">john@example.com</p>
-                </div>
-              </div>
-            </motion.div>
-          )}
         </div>
       </motion.div>
 
