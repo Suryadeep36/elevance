@@ -4,7 +4,7 @@ const sampleData = [
     "title": "Frontend Developer",
     "company": "InnovaTech",
     "skills": ["React", "JavaScript", "CSS", "Figma"],
-    "location": "Ahmedabad, India",
+    "location": "Ahmedabad",
     "lat": 23.0225,
     "lon": 72.5714
   },

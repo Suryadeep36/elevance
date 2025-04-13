@@ -4,10 +4,9 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import sampleData from './sample_data.js';
 import dynamic from 'next/dynamic';
-import { ChevronDown } from 'lucide-react';
 import { MapPin, Users, Briefcase, Filter, Search, Code, X, Globe, Map as MapIcon } from 'lucide-react';
 
-// Import the map component dynamically to avoid SSR issues with Leaflet
+
 const UserMap = dynamic(() => import('@/components/mapComponent.tsx'), { 
   ssr: false,
   loading: () => (

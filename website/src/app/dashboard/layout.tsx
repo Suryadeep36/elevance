@@ -39,7 +39,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     <div className="min-h-screen flex bg-gradient-to-br from-gray-900 to-gray-950 text-white mt-10">
       {/* Sidebar */}
       <motion.div 
-        className="mt-20 fixed top-0 left-0 h-full bg-gray-900 border-r border-gray-800 z-10 shadow-xl overflow-hidden backdrop-blur-sm bg-opacity-80"
+        className="mt-14 fixed top-0 left-0 h-full bg-gray-900 border-r border-gray-800 z-10 shadow-xl overflow-hidden backdrop-blur-sm bg-opacity-80"
         initial="expanded"
         animate={collapsed ? 'collapsed' : 'expanded'}
         variants={sidebarVariants}

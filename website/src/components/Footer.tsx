@@ -5,8 +5,8 @@ function Footer() {
   const currentYear = new Date().getFullYear()
   
   return (
-    <footer className="bg-[#0a1120] text-gray-200">
-      <div className="container-custom py-12">
+    <footer className="bg-[#0a1120] text-gray-200 pl-20">
+      <div className="container-custom py-12 pl-48">
         {/* Footer Main Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Brand Column */}

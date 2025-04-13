@@ -5,6 +5,14 @@ import { useState, useEffect } from "react";
 import { useUser, useAuth } from "@clerk/nextjs";
 import { toast } from "react-hot-toast";
 
+interface Badge {
+  _id: string;
+  cluster: string;
+  imageUrl: string;
+  mintedAt: string;
+  tokenId: string;
+}
+
 interface ProfileData {
   _id?: string;
   clerk_Id?: string;
@@ -21,7 +29,7 @@ interface ProfileData {
   skills: string[];
   courses?: string[];
   certificates?: string[];
-  badges?: string[];
+  badges?: Badge[];
   atsScore?: number;
 }
 
@@ -799,7 +807,69 @@ export default function ProfilePage() {
               </div>
             </div>
 
+            {/* Badges Section */}
+            <motion.div
+              className="backdrop-blur-sm bg-white/5 rounded-2xl p-6 border border-gray-800 shadow-xl"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-semibold flex items-center">
+                  <Award size={18} className="text-purple-400 mr-2" />
+                  <span>Achievement Badges</span>
+                </h3>
+                <span className="text-xs py-1 px-2.5 bg-purple-900/30 text-purple-400 rounded-full">
+                  {profileData.badges?.length || 0} badges earned
+                </span>
+              </div>
 
+              {profileData.badges && profileData.badges.length > 0 ? (
+                <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {profileData.badges.map((badge, index) => (
+                    <motion.div
+                      key={badge._id}
+                      className="group relative"
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: index * 0.1 }}
+                      whileHover={{ scale: 1.05, transition: { duration: 0.2 } }}
+                    >
+                      <div className="flex flex-col items-center p-4 rounded-xl bg-gradient-to-br from-gray-800/80 to-gray-900/80 border border-gray-700 hover:border-purple-500/50 transition-all duration-300 backdrop-blur-sm group-hover:shadow-md group-hover:shadow-purple-500/20">
+                        <div className="w-16 h-16 mb-3 relative">
+                          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-500/20 to-blue-500/20 animate-pulse"></div>
+                          <img 
+                            src={badge.imageUrl} 
+                            alt={badge.cluster} 
+                            className="w-full h-full object-contain relative z-10" 
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/badge-placeholder.png'; // Fallback image
+                            }}
+                          />
+                        </div>
+                        <h4 className="text-sm font-medium text-center text-white group-hover:text-purple-300 transition-colors">
+                          {badge.cluster}
+                        </h4>
+                        <div className="mt-2 text-xs text-center text-gray-400">
+                          Minted: {new Date(badge.mintedAt).toLocaleDateString()}
+                        </div>
+                        <div className="absolute -top-2 -right-2 bg-purple-600 text-xs rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          #{badge.tokenId}
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-10 border border-dashed border-gray-700 rounded-xl bg-gray-800/30">
+                  <Award size={32} className="text-gray-600 mb-3" />
+                  <p className="text-gray-500">No badges earned yet</p>
+                  <p className="text-gray-600 text-xs mt-2">
+                    Complete courses and challenges to earn badges
+                  </p>
+                </div>
+              )}
+            </motion.div>
 
             <motion.div
               className="backdrop-blur-sm bg-white/5 rounded-2xl p-6 border border-gray-800 shadow-xl mb-14"
@@ -867,6 +937,7 @@ export default function ProfilePage() {
                       </motion.div>
                     ))}
                   </div>
+                    
                 </motion.div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-8 border border-dashed border-gray-700 rounded-xl bg-gray-800/30">

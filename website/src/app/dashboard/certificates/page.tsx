@@ -1,19 +1,18 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { FileUpload } from "@/components/ui/file-upload";
 import { X, UploadCloud, Image as ImageIcon, Check, XCircle, Loader2 } from "lucide-react";
 import Image from "next/image";
 import axios from "axios";
-import { BrowserProvider } from "ethers";
+import { BrowserProvider } from "ethers"; // Replaces Web3Provider
 import { ethers } from "ethers";
 import { getBadgeContract } from "@/utils/badgeContract";
-import { useAuth, UserProfile, useUser } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
+
 interface CourseResult {
   course_name: string;
   cluster: string;
 }
-
-
 
 interface VerificationResult {
   courses_found: CourseResult[];
@@ -29,26 +28,25 @@ const badgeMetadataMap: Record<string, { skill: string; tokenURI: string }> = {
     skill: "Machine Learning",
     tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreibxxlgv4dphmpglmyic35fezeqm5icxvgtl7fxnp3jynr4ricwxzm",
   },
-  "Frontend Developer": {
-    skill: "Frontend Developer",
-    tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreiasduaedmvs4l2xvzyxbvfyd5uy7nmxfvy4gttt6kywo44oholudq",
+  "Web Developer": {
+    skill: "Web Developer",
+    tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreid7ynhgat725ymwjx2oijltcyabottskoxeuiwxigwitw6tz2lnli",
   },
   "App Developer": {
     skill: "App Developer",
-    tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreie4rog6fes64w736yexqlvttdotfbro2ebgakyykknh7gxpvsdkoq",
+    tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreibu5n7fj4wvs6vsl5kzgztr2rj3xufs2kryxxzyqxmeib2vngpw24",
   },
-  "Backend Developer": {
-    skill: "Backend Developer",
-    tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreia7alc4mgxjj54evueiomapt7p5umcnzq3yneu4wdldpc6lx34ys4",
+  "Cybersecurity Engineer": {
+    skill: "Cybersecurity Engineer",
+    tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreiat3tkr2p5w33vnnqnhqv5hcgwqwdna23mbgukh2v2vrwhdjmjyfm",
   },
   "Cloud Dev": {
     skill: "Cloud Engineer",
-    tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreifhrsqusx3rd2nbaq2y22564uyf4bvslimvom6dx5xemjc23wtfra",
+    tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreigwi7lcc6rrpu4vurf7agztb6vmdqsk556au4xymlxmo3hswgmi24",
   },
 };
 
-const mintBadge = async (cluster: string) => {
-
+const mintBadge = async (cluster: string, user: any) => {
   const metadata = badgeMetadataMap[cluster];
   if (!metadata) {
     alert(`No metadata found for cluster: ${cluster}`);
@@ -63,21 +61,67 @@ const mintBadge = async (cluster: string) => {
   const contract = getBadgeContract(signer);
 
   try {
-    const tx = await contract.mintBadge(userAddress, metadata.skill, metadata.tokenURI);
-    await tx.wait();
-    alert("Badge minted successfully!");
+    console.log(userAddress + " " + cluster)
+    const tx = await contract.mintBadge(userAddress, cluster);
+    const receipt = await tx.wait();
+
+    // Extract BadgeMinted event
+    const event = receipt.logs
+      .map((log : any) => {
+        try {
+          return contract.interface.parseLog(log);
+        } catch (err) {
+          return null;
+        }
+      })
+      .find((parsed : any) => parsed?.name === "BadgeMinted");
+
+    if (!event) {
+      console.error("Event not found in tx");
+      return;
+    }
+
+    const tokenId = event.args.tokenId.toString();
+    const tokenURI = event.args.tokenURI;
+    const imageUrl = tokenURI.startsWith('ipfs://')
+      ? `https://gateway.pinata.cloud/ipfs/${tokenURI.replace('ipfs://', '')}`
+      : tokenURI;
+
+  
+    await axios.post('/api/add-badge', {
+      clerk_Id: user?.id,
+      badge: {
+        cluster,
+        imageUrl,
+        tokenId
+      }
+    });
+    alert('Badge minted and added to user!');
   } catch (error) {
     console.error("Minting failed:", error);
     alert("Minting failed. Check console.");
   }
 };
 
+
+
 export default function Page() {
+  const {isLoaded, user} = useUser();
+  const {isSignedIn} = useAuth();
+  const [username, setUsername] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { isLoaded, user } = useUser();
+  
+
   const { userId } = useAuth()
+ 
+  useEffect(() => {
+    if (isLoaded && isSignedIn && user?.fullName) {
+      setUsername(user.fullName);
+    }
+  }, [isLoaded, isSignedIn, user]);
+
   const handleFileUpload = (uploadedFiles: File[]) => {
     setFiles(uploadedFiles);
     setVerificationResult(null);
@@ -97,8 +141,7 @@ export default function Page() {
     try {
       const formData = new FormData();
       formData.append("certificate", files[0]);
-      // formData.append("name", user?.fullName || "");
-      formData.append("name", "Manil Modi");
+      formData.append("name", "Manil");
 
       const response = await axios.post<VerificationResult>(
         "http://localhost:8000/verify-certificate",
@@ -109,13 +152,11 @@ export default function Page() {
           },
         }
       );
-
-
       if (response.data.valid_certificate == true) {
 
         const clustor = response.data.courses_found[0].cluster;
         if (response.data.valid_certificate && response.data.platform_verified) {
-          await mintBadge(clustor);
+          await mintBadge(clustor, user);
         }
         setVerificationResult(response.data);
 
@@ -138,17 +179,32 @@ export default function Page() {
 
 
       }
-
+      const newForm = new FormData()
+      newForm.append('file', files[0]);
+      if (!userId) {
+        console.log('user id not found');
+        return;
+      }
+      newForm.append('userId', userId);
+      const urlObjet = await axios.post("/api/certificate", newForm);
+      // Extract the URL from the response
+      const certificateUrl = urlObjet.data?.url?.url;
+      console.log(urlObjet)
+      console.log(certificateUrl)
+      await axios.put('/api/user/update', {
+        certificates: [certificateUrl], // Send just the URL string
+        clerk_Id: userId
+      });
 
     } catch (error) {
       console.error("Verification failed:", error);
-      setVerificationResult({
+      setVerificationResult({ 
         courses_found: [],
         platform_verified: false,
         user_name_verified: false,
         valid_certificate: false,
         extracted_text: "",
-        error: "Verification failed. Please try again."
+        error: "Verification failed. Please try again." 
       });
     } finally {
       setIsLoading(false);
@@ -231,30 +287,33 @@ export default function Page() {
             )}
             Certificate Verification Results
           </h3>
-
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-neutral-500">Username Verified:</span>
-                <span className={`font-medium ${verificationResult.user_name_verified ? 'text-green-500' : 'text-red-500'
-                  }`}>
+                <span className={`font-medium ${
+                  verificationResult.user_name_verified ? 'text-green-500' : 'text-red-500'
+                }`}>
                   {verificationResult.user_name_verified ? 'Verified' : 'Not Found'}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-neutral-500">Platform Verified:</span>
-                <span className={`font-medium ${verificationResult.platform_verified ? 'text-green-500' : 'text-red-500'
-                  }`}>
+                <span className={`font-medium ${
+                  verificationResult.platform_verified ? 'text-green-500' : 'text-red-500'
+                }`}>
                   {verificationResult.platform_verified ? 'Verified' : 'Not Found'}
                 </span>
               </div>
             </div>
-
+            
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-neutral-500">Certificate Status:</span>
-                <span className={`font-medium ${verificationResult.valid_certificate ? 'text-green-500' : 'text-red-500'
-                  }`}>
+                <span className={`font-medium ${
+                  verificationResult.valid_certificate ? 'text-green-500' : 'text-red-500'
+                }`}>
                   {verificationResult.valid_certificate ? 'Valid' : 'Invalid'}
                 </span>
               </div>
