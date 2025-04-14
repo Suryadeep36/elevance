@@ -3,13 +3,14 @@ import UserModel from "@/model/User";
 
 export async function POST(req: Request) {
     await dbConnect();
-    const { clerk_Id, name, email} = await req.json();
+    const { clerk_Id, name, email, profileImage} = await req.json();
 
     try {
         const user = new UserModel({
             clerk_Id,
             name,
             email,
+            profileImage
         });
 
         await user.save();

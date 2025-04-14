@@ -19,7 +19,7 @@ export default function Home() {
       if (!isSignedIn || !user) return;
 
       try {
-        const res = await fetch('/api/user/create', {
+        const res = await fetch('/api/sign-up', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
