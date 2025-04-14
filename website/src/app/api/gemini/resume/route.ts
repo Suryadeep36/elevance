@@ -8,8 +8,8 @@ export const config = {
 export async function POST(req: NextRequest) {
   try {
     // Check for API key
-    if (!process.env?.GEMINI_KEY) {
-      throw new Error("GEMINI_KEY is not defined in the environment variables.");
+    if (!process.env?.GEMEINI_KEY) {
+      throw new Error("GEMEINI_KEY is not defined in the environment variables.");
     }
 
     // Get the file from the request
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Initialize Gemini
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY);
+    const genAI = new GoogleGenerativeAI(process.env.GEMEINI_KEY);
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     // Convert file to format Gemini can use

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import sampleData from './sample_data.js';
 import dynamic from 'next/dynamic';
@@ -22,7 +23,6 @@ const UserMap = dynamic(() => import('@/components/mapComponent.tsx'), {
 export default function NetworkPage() {
   const [userData, setUserData] = useState<any[]>([]);
   const [selectedSkill, setSelectedSkill] = useState('');
-  const [selectedCompany, setSelectedCompany] = useState('');
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -31,6 +31,46 @@ export default function NetworkPage() {
   
   // Load user data and preferences on component mount
   useEffect(() => {
+   
+    const fetchAllUsersWithBadges = async () => {
+      try {
+        const response = await axios.get('/api/user/getAll');
+        if (response.data.success) {
+          const enrichedUsers : any= [];
+          for (const user of response.data.allUsers) {
+            let lat: number = 0;
+            let lon: number = 0;
+          
+            try {
+              const geoRes = await axios.post('/api/geolocation', {
+                city: user.location,
+              });
+          
+              if (geoRes.data.success) {
+                lat = geoRes.data.location.lat;
+                lon = geoRes.data.location.lon;
+              }
+            } catch (error) {
+              console.error(`Failed to geocode ${user.location}`, error);
+            }
+          
+            enrichedUsers.push({
+              name: user.name,
+              title: user.role,
+              skills: user.skills,
+              location: user.location,
+              lat: lat,
+              lon: lon
+            });
+          }
+          setUserData(enrichedUsers);
+        }
+      } catch (error) {
+        console.error("Error fetching users with badges:", error);
+      }
+    };
+  
+    fetchAllUsersWithBadges();
     setUserData(sampleData);
     
     // Load saved map view preference from localStorage
@@ -53,17 +93,17 @@ export default function NetworkPage() {
 
   // Extract all unique skills and companies from userData
   const allSkills = [...new Set(userData.flatMap(user => user.skills))];
-  const allCompanies = [...new Set(userData.map(user => user.company))];
+
 
   // Filter users based on selected criteria
   const filteredUsers = userData.filter(user => {
     const matchesSkill = !selectedSkill || user.skills.includes(selectedSkill);
-    const matchesCompany = !selectedCompany || user.company === selectedCompany;
+
     const matchesSearch = !searchTerm || 
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.title.toLowerCase().includes(searchTerm.toLowerCase());
     
-    return matchesSkill && matchesCompany && matchesSearch;
+    return matchesSkill && matchesSearch;
   });
 
   // Toggle map view mode
@@ -152,26 +192,12 @@ export default function NetworkPage() {
                       </select>
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-medium text-gray-400 mb-1.5">Filter by Company</label>
-                      <select 
-                        value={selectedCompany} 
-                        onChange={(e) => setSelectedCompany(e.target.value)}
-                        className="w-full bg-gray-900/80 border border-gray-700 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-purple-500 text-white text-sm"
-                      >
-                        <option value="">Any Company</option>
-                        {allCompanies.map((company, idx) => (
-                          <option key={idx} value={company}>{company}</option>
-                        ))}
-                      </select>
-                    </div>
 
-                    {(selectedSkill || selectedCompany) && (
+                    {(selectedSkill  ) && (
                       <div className="pt-2 flex justify-end">
                         <button
                           onClick={() => {
                             setSelectedSkill('');
-                            setSelectedCompany('');
                           }}
                           className="text-red-400 hover:text-red-300 text-xs"
                         >
@@ -225,10 +251,6 @@ export default function NetworkPage() {
                         </div>
                       </div>
                       
-                      <div className="mt-3 flex items-start text-sm">
-                        <Briefcase size={14} className="text-gray-500 mt-0.5 mr-2" />
-                        <p className="text-gray-400">{user.company}</p>
-                      </div>
                       
                       <div className="mt-2 flex items-start text-sm">
                         <MapPin size={14} className="text-gray-500 mt-0.5 mr-2" />
@@ -310,7 +332,6 @@ export default function NetworkPage() {
               <UserMap
                 users={userData}
                 selectedSkill={selectedSkill}
-                selectedCompany={selectedCompany}
                 selectedUser={selectedUser}
                 setSelectedUser={setSelectedUser}
                 viewMode={mapViewMode}
@@ -347,14 +368,6 @@ export default function NetworkPage() {
                 
                 <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-3">
-                    <div>
-                      <p className="text-xs text-gray-500">Company</p>
-                      <div className="flex items-center mt-1">
-                        <Briefcase size={16} className="text-gray-400 mr-2" />
-                        <p className="text-white">{selectedUser.company}</p>
-                      </div>
-                    </div>
-                    
                     <div>
                       <p className="text-xs text-gray-500">Location</p>
                       <div className="flex items-center mt-1">
