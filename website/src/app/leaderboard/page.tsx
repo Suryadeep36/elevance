@@ -2,10 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search } from 'lucide-react';
-
+import { ethers } from "ethers";
+import { getBadgeContract } from "@/utils/badgeContract";
+import axios from 'axios';
 // Define TypeScript interfaces
 interface User {
-  id: number;
   username: string;
   badges: number;
   clusters: string[];
@@ -14,37 +15,96 @@ interface User {
 interface ClusterColors {
   [key: string]: string;
 }
+interface FetchBadge {
+  name: string;
+  imgUrl: string
+}
 
-// Define our dummy data
-const dummyUsers: User[] = [
-  { id: 1, username: 'techguru99', badges: 5, clusters: ['Cloud Computing', 'Machine Learning', 'Web Dev', 'App Dev', 'Cyber Security'] },
-  { id: 2, username: 'codemaster', badges: 4, clusters: ['Web Dev', 'App Dev', 'Cloud Computing', 'Cyber Security'] },
-  { id: 3, username: 'datawhiz', badges: 5, clusters: ['Machine Learning', 'Cloud Computing', 'Web Dev', 'App Dev', 'Cyber Security'] },
-  { id: 4, username: 'devninja', badges: 3, clusters: ['Web Dev', 'App Dev', 'Cloud Computing'] },
-  { id: 5, username: 'securitypro', badges: 4, clusters: ['Cyber Security', 'Cloud Computing', 'Web Dev', 'Machine Learning'] },
-  { id: 6, username: 'cloudmaster', badges: 5, clusters: ['Cloud Computing', 'Web Dev', 'App Dev', 'Machine Learning', 'Cyber Security'] },
-  { id: 7, username: 'aiexplorer', badges: 3, clusters: ['Machine Learning', 'Cloud Computing', 'Web Dev'] },
-  { id: 8, username: 'appdeveloper', badges: 4, clusters: ['App Dev', 'Web Dev', 'Cloud Computing', 'Machine Learning'] },
-  { id: 9, username: 'webwizard', badges: 2, clusters: ['Web Dev', 'App Dev'] },
-  { id: 10, username: 'hackdefender', badges: 4, clusters: ['Cyber Security', 'Cloud Computing', 'Web Dev', 'Machine Learning'] },
-];
-
-// Sort users by badge count (highest to lowest)
-const sortedUsers = [...dummyUsers].sort((a, b) => b.badges - a.badges);
 
 // Map cluster names to colors
 const clusterColors: ClusterColors = {
-  'Cloud Computing': 'bg-blue-500',
-  'Web Dev': 'bg-purple-500',
+  'Cloud Engineer': 'bg-blue-500',
+  'Web Developer': 'bg-purple-500',
   'Machine Learning': 'bg-green-500',
-  'App Dev': 'bg-orange-500',
-  'Cyber Security': 'bg-red-500',
+  'App Developer': 'bg-orange-500',
+  'Cybersecurity Engineer': 'bg-red-500',
 };
 
+
+
 const Leaderboard: React.FC = () => {
-  const [users, setUsers] = useState<User[]>(sortedUsers);
+  const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [filteredUsers, setFilteredUsers] = useState<User[]>(sortedUsers);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  
+  
+  useEffect(() => {
+    const fetchBadges = async (userAddress: string): Promise<FetchBadge[]> => {
+      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      const signer = await provider.getSigner();
+      const contract = getBadgeContract(signer);
+  
+      const newBadges: FetchBadge[] = [];
+      const allBadges = ['Web Developer', 'App Developer', 'Machine Learning', 'Cloud Engineer', 'Cybersecurity Engineer'];
+      const skillToImageMap: Record<string, string> = {
+        "Web Developer": "https://gateway.pinata.cloud/ipfs/bafybeicyd3lbzjrh7ty6ywgejwhsmfoafajwg2jhfn66cnd456uaioaae4",
+        "App Developer": "https://gateway.pinata.cloud/ipfs/bafkreib7scz6va5kldas2yvudtedizua4avp3axlssgxisbff5czk6cbmm",
+        "Machine Learning": "https://gateway.pinata.cloud/ipfs/bafkreif5rb6xsxhdrqi2afwbjvj3jhf4nyn65yehekmgsccu435g6yxidi",
+        "Cloud Engineer": "https://gateway.pinata.cloud/ipfs/bafkreihbfzwzbvo2qp7ra7fq2kk5j6mhxbv3ced5fkebtolnr7binjrb4i",
+        "Cybersecurity Engineer": "https://gateway.pinata.cloud/ipfs/bafkreigu7ulweobgswi5z4hi44gjkn42u3j7fi73xh46ppjgfzrclov47q",
+      };
+  
+      for (const badge of allBadges) {
+        const hasBadge = await contract.hasBadge(userAddress, badge);
+        if (hasBadge) {
+          newBadges.push({ name: badge, imgUrl: skillToImageMap[badge] });
+        }
+      }
+  
+      return newBadges;
+    };
+  
+    const fetchAllUsersWithBadges = async () => {
+      try {
+        if (!(window as any).ethereum) {
+          console.warn('MetaMask not available');
+          return;
+        }
+  
+        const provider = new ethers.BrowserProvider((window as any).ethereum);
+        const signer = await provider.getSigner();
+        const currentAddress = await signer.getAddress();
+  
+        if (!currentAddress) {
+          console.warn("No wallet address found");
+          return;
+        }
+  
+        const response = await axios.get('/api/user/getAll');
+        if (response.data.success) {
+          const enrichedUsers = [];
+  
+          for (const user of response.data.allUsers) {
+            if (!user.metamaskAddress) continue;
+            const badges = await fetchBadges(user.metamaskAddress);
+            const clusters = badges.map(badge => badge.name);
+            enrichedUsers.push({
+              username: user.name,
+              badges: badges.length,
+              clusters,
+            });
+          }
+          enrichedUsers.sort((a, b) => b.badges - a.badges);
+          setUsers(enrichedUsers);
+        }
+      } catch (error) {
+        console.error("Error fetching users with badges:", error);
+      }
+    };
+  
+    fetchAllUsersWithBadges();
+  }, []);
+
 
   useEffect(() => {
     const results = users.filter(user =>
@@ -62,7 +122,7 @@ const Leaderboard: React.FC = () => {
         className='mt-20 mb-10'
       >
         <h1 className="text-3xl font-bold mb-6 text-center">Skill Master Leaderboard</h1>
-        
+
         {/* Search Bar */}
         <div className="relative mb-8">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -76,7 +136,7 @@ const Leaderboard: React.FC = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        
+
         {/* Leaderboard */}
         <div className="bg-gray-800 rounded-lg overflow-hidden">
           {/* Header */}
@@ -86,13 +146,13 @@ const Leaderboard: React.FC = () => {
             <div className="col-span-2 text-center">Badges</div>
             <div className="col-span-6">Skill Clusters</div>
           </div>
-          
+
           {/* User List */}
           <AnimatePresence>
             {filteredUsers.length > 0 ? (
               filteredUsers.map((user, index) => (
                 <motion.div
-                  key={user.id}
+                  key={index}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, x: -20 }}
@@ -101,7 +161,7 @@ const Leaderboard: React.FC = () => {
                 >
                   <div className="col-span-1 text-center font-semibold text-lg text-gray-400">{index + 1}</div>
                   <div className="col-span-3 font-medium text-blue-400">{user.username}</div>
-                  <motion.div 
+                  <motion.div
                     className="col-span-2 text-center font-bold text-yellow-500"
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}

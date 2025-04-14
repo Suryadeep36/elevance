@@ -33,6 +33,7 @@ interface ProfileData {
   certificates?: string[];
   badges?: Badge[];
   atsScore?: number;
+  metamaskAddress: string;
 }
 
 interface FetchBadge {
@@ -57,6 +58,7 @@ const defaultProfileData: ProfileData = {
     { id: 2, title: "UX Designer", company: "Creative Studio", location: "New York" },
   ],
   skills: [],
+  metamaskAddress: "not added"
 };
 
 export default function ProfilePage() {
@@ -134,6 +136,15 @@ export default function ProfilePage() {
     const signer = await provider.getSigner();
     const userAddress = await signer.getAddress();
     const contract = getBadgeContract(signer);
+    const responseData = await saveUserData({
+      metamaskAddress: userAddress
+    })
+    if(responseData){
+      setProfileData((prev) => ({
+        ...prev,
+        metamaskAddress: userAddress
+      }));
+    }
     const newBadges : FetchBadge[] = [];
     const allBadges = ['Web Developer','App Developer','Machine Learning','Cloud Engineer','Cybersecurity Engineer'];
     const skillToImageMap : any = {
@@ -464,7 +475,7 @@ export default function ProfilePage() {
           // Save resume URL and skills to MongoDB
           const saveResult = await saveUserData({
             resume: resumeUrl,
-            skills: updatedSkills,
+            skills: updatedSkills
           });
 
           if (saveResult) {

@@ -26,6 +26,7 @@ export interface User extends Document {
   courses: string[];
   certificates: string[];
   badges: Badge[];
+  metamaskAddress: string;
 }
 const BadgeSchema = new Schema({
     cluster: { type: String, required: true },
@@ -48,7 +49,8 @@ const UserSchema: Schema<User> = new Schema({
   experience: [{ company: { type: String }, position: { type: String } }],
   courses: [{ type: String }],
   certificates: [{ type: String }],
-  badges: [BadgeSchema]
+  badges: [BadgeSchema],
+  metamaskAddress: {type: String}
 });
 
 
