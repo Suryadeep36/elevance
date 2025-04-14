@@ -4,7 +4,6 @@ import { FileUpload } from "@/components/ui/file-upload";
 import { X, UploadCloud, Image as ImageIcon, Check, XCircle, Loader2 } from "lucide-react";
 import Image from "next/image";
 import axios from "axios";
-import { BrowserProvider } from "ethers"; // Replaces Web3Provider
 import { ethers } from "ethers";
 import { getBadgeContract } from "@/utils/badgeContract";
 import { useAuth, useUser } from "@clerk/nextjs";
@@ -26,21 +25,21 @@ interface VerificationResult {
 const badgeMetadataMap: Record<string, { skill: string; tokenURI: string }> = {
   "Machine Learning": {
     skill: "Machine Learning",
-    tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreibxxlgv4dphmpglmyic35fezeqm5icxvgtl7fxnp3jynr4ricwxzm",
+    tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreih5oo7rilmctthdylxwrtxt7u5cfwhvvw5noeubc52cjbpmiqe2ya",
   },
-  "Web Developer": {
+  "Web Development": {
     skill: "Web Developer",
     tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreid7ynhgat725ymwjx2oijltcyabottskoxeuiwxigwitw6tz2lnli",
   },
-  "App Developer": {
+  "App Development": {
     skill: "App Developer",
     tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreibu5n7fj4wvs6vsl5kzgztr2rj3xufs2kryxxzyqxmeib2vngpw24",
   },
-  "Cybersecurity Engineer": {
+  "Cyber Security": {
     skill: "Cybersecurity Engineer",
     tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreiat3tkr2p5w33vnnqnhqv5hcgwqwdna23mbgukh2v2vrwhdjmjyfm",
   },
-  "Cloud Dev": {
+  "Cloud Computing": {
     skill: "Cloud Engineer",
     tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreigwi7lcc6rrpu4vurf7agztb6vmdqsk556au4xymlxmo3hswgmi24",
   },
@@ -57,49 +56,20 @@ const mintBadge = async (cluster: string, user: any) => {
   await provider.send("eth_requestAccounts", []);
   const signer = await provider.getSigner();
   const userAddress = await signer.getAddress();
-
+  const skill = metadata.skill;
   const contract = getBadgeContract(signer);
-
-  try {
-    console.log(userAddress + " " + cluster)
-    const tx = await contract.mintBadge(userAddress, cluster);
-    const receipt = await tx.wait();
-
-    // Extract BadgeMinted event
-    const event = receipt.logs
-      .map((log : any) => {
-        try {
-          return contract.interface.parseLog(log);
-        } catch (err) {
-          return null;
-        }
-      })
-      .find((parsed : any) => parsed?.name === "BadgeMinted");
-
-    if (!event) {
-      console.error("Event not found in tx");
-      return;
+  const hasBadge = await contract.hasBadge(userAddress, skill);
+  if(!hasBadge){
+    try {
+      await contract.mintBadge(userAddress, skill);
+      alert('Badge minted and added to user!');
+    } catch (error) {
+      console.error("Minting failed:", error);
+      alert("Minting failed. Check console.");
     }
-
-    const tokenId = event.args.tokenId.toString();
-    const tokenURI = event.args.tokenURI;
-    const imageUrl = tokenURI.startsWith('ipfs://')
-      ? `https://gateway.pinata.cloud/ipfs/${tokenURI.replace('ipfs://', '')}`
-      : tokenURI;
-
-  
-    await axios.post('/api/add-badge', {
-      clerk_Id: user?.id,
-      badge: {
-        cluster,
-        imageUrl,
-        tokenId
-      }
-    });
-    alert('Badge minted and added to user!');
-  } catch (error) {
-    console.error("Minting failed:", error);
-    alert("Minting failed. Check console.");
+  }
+  else{
+    alert('Badge already minted');
   }
 };
 
@@ -141,7 +111,7 @@ export default function Page() {
     try {
       const formData = new FormData();
       formData.append("certificate", files[0]);
-      formData.append("name", "Manil");
+      formData.append("name", "Niladri");
 
       const response = await axios.post<VerificationResult>(
         "http://localhost:8000/verify-certificate",
