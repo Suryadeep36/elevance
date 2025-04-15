@@ -1,14 +1,14 @@
 "use client"
-import SplineScene from "@/components/Animation";
-import Brain from "@/components/Brain";
-import MovingGlobe from "@/components/MovingGlobe";
-import GrowGraph from "@/components/growGraph";
+import dynamic from "next/dynamic";
 import { useState, useEffect } from "react";
 import { TechLoader } from "@/components/TechLoader";
 import { useAuth } from '@clerk/nextjs';
 import Link from "next/link";
 import { useUser } from '@clerk/nextjs';
-
+const SplineScene = dynamic(() => import('@/components/Animation'), { ssr: false });
+const Brain = dynamic(() => import('@/components/Brain'), { ssr: false });
+const MovingGlobe = dynamic(() => import('@/components/MovingGlobe'), { ssr: false });
+const GrowGraph = dynamic(() => import('@/components/growGraph'), { ssr: false });
 export default function Home() {
 
   const { isSignedIn, isLoaded } = useAuth();
