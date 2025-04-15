@@ -52,24 +52,32 @@ const mintBadge = async (cluster: string, user: any) => {
     return;
   }
 
-  const provider = new ethers.BrowserProvider((window as any).ethereum);
-  await provider.send("eth_requestAccounts", []);
-  const signer = await provider.getSigner();
-  const userAddress = await signer.getAddress();
-  const skill = metadata.skill;
-  const contract = getBadgeContract(signer);
-  const hasBadge = await contract.hasBadge(userAddress, skill);
-  if(!hasBadge){
-    try {
-      await contract.mintBadge(userAddress, skill);
-      alert('Badge minted and added to user!');
-    } catch (error) {
-      console.error("Minting failed:", error);
-      alert("Minting failed. Check console.");
-    }
+  if (!(window as any).ethereum) {
+    alert("MetaMask is not installed.");
+    return;
   }
-  else{
-    alert('Badge already minted');
+
+  try {
+    const provider = new ethers.BrowserProvider((window as any).ethereum);
+    await provider.send("eth_requestAccounts", []);
+    const signer = await provider.getSigner();
+    const userAddress = await signer.getAddress();
+
+    const skill = metadata.skill;
+    const contract = getBadgeContract(signer);
+
+    const hasBadge = await contract.hasBadge(userAddress, skill);
+    if (hasBadge) {
+      alert("Badge already minted.");
+      return;
+    }
+
+    await contract.mintBadge(userAddress, skill);
+    alert("Badge minted successfully!");
+
+  } catch (error) {
+    console.error("Minting failed:", error);
+    alert("Failed to mint badge. See console for more info.");
   }
 };
 
