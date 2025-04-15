@@ -70,6 +70,7 @@ export default function ProfilePage() {
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [badges, setBadges] = useState<FetchBadge[]>([]);
+  const [isWalletConnected, setIsWalletConnected] = useState(false);
 
   // For role editing dropdown
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
@@ -131,32 +132,53 @@ export default function ProfilePage() {
   };
 
   const fetchBadges = async () => {
+    if (!(window as any).ethereum) {
+      alert("MetaMask is not installed. Please install it to continue.");
+      return;
+    }
     const provider = new ethers.BrowserProvider((window as any).ethereum);
-    await provider.send("eth_requestAccounts", []);
+    try {
+      await provider.send("eth_requestAccounts", []);
+    } catch (connectionError) {
+      console.error("User denied wallet connection:", connectionError);
+      alert("Please connect your wallet to proceed.");
+      return;
+    }
     const signer = await provider.getSigner();
     const userAddress = await signer.getAddress();
     const contract = getBadgeContract(signer);
-    const responseData = await saveUserData({
-      metamaskAddress: userAddress
-    })
-    if(responseData){
-      setProfileData((prev) => ({
-        ...prev,
+
+    try {
+      const responseData = await saveUserData({
         metamaskAddress: userAddress
-      }));
+      });
+
+      if (responseData) {
+        setProfileData((prev) => ({
+          ...prev,
+          metamaskAddress: userAddress
+        }));
+      }
+
+      setIsWalletConnected(true);
+    } catch (apiError) {
+      console.error("Error saving user data:", apiError);
+      alert("Something went wrong while saving user data.");
+      return;
     }
-    const newBadges : FetchBadge[] = [];
-    const allBadges = ['Web Developer','App Developer','Machine Learning','Cloud Engineer','Cybersecurity Engineer'];
-    const skillToImageMap : any = {
+
+    const newBadges: FetchBadge[] = [];
+    const allBadges = ['Web Developer', 'App Developer', 'Machine Learning', 'Cloud Engineer', 'Cybersecurity Engineer'];
+    const skillToImageMap: any = {
       "Web Developer": "https://gateway.pinata.cloud/ipfs/bafybeicyd3lbzjrh7ty6ywgejwhsmfoafajwg2jhfn66cnd456uaioaae4",
       "App Developer": "https://gateway.pinata.cloud/ipfs/bafkreib7scz6va5kldas2yvudtedizua4avp3axlssgxisbff5czk6cbmm",
       "Machine Learning": "https://gateway.pinata.cloud/ipfs/bafkreif5rb6xsxhdrqi2afwbjvj3jhf4nyn65yehekmgsccu435g6yxidi",
       "Cloud Engineer": "https://gateway.pinata.cloud/ipfs/bafkreihbfzwzbvo2qp7ra7fq2kk5j6mhxbv3ced5fkebtolnr7binjrb4i",
       "Cybersecurity Engineer": "https://gateway.pinata.cloud/ipfs/bafkreigu7ulweobgswi5z4hi44gjkn42u3j7fi73xh46ppjgfzrclov47q",
     };
-    for(let i = 0; i < allBadges.length; i++){
+    for (let i = 0; i < allBadges.length; i++) {
       const hasBadge = await contract.hasBadge(userAddress, allBadges[i]);
-      if(hasBadge){
+      if (hasBadge) {
         newBadges.push({
           name: allBadges[i],
           imgUrl: skillToImageMap[allBadges[i]]
@@ -169,7 +191,10 @@ export default function ProfilePage() {
   useEffect(() => {
     if (isSignedIn && isLoaded) {
       fetchUserData();
-      fetchBadges();
+      // const shouldConnect = confirm("Do you want to connect your MetaMask wallet?");
+      // if(shouldConnect && (window as any).ethereum){
+      //   fetchBadges();
+      // }
     }
   }, [isSignedIn, isLoaded, user?.id]);
 
@@ -651,7 +676,6 @@ export default function ProfilePage() {
                     </div>
                   )}
 
-                  <div className="absolute bottom-3 right-[42%] w-5 h-5 bg-green-500 rounded-full border-2 border-gray-800 shadow-lg"></div>
 
                   <div className="text-center w-full">
                     {profileData.name ? (
@@ -855,7 +879,16 @@ export default function ProfilePage() {
             </div>
 
             {/* Badges Section */}
-            <motion.div
+            {!isWalletConnected ? (<div className="flex flex-col items-center justify-center py-10 border border-dashed border-gray-700 rounded-xl bg-gray-800/30">
+              <Award size={32} className="text-gray-600 mb-3" />
+              <p className="text-gray-500">Connect your wallet to view earned badges</p>
+              <button
+                onClick={fetchBadges}
+                className="mt-4 px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition"
+              >
+                Connect Wallet
+              </button>
+            </div>) : (<motion.div
               className="backdrop-blur-sm bg-white/5 rounded-2xl p-6 border border-gray-800 shadow-xl"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -867,7 +900,7 @@ export default function ProfilePage() {
                   <span>Achievement Badges</span>
                 </h3>
                 <span className="text-xs py-1 px-2.5 bg-purple-900/30 text-purple-400 rounded-full">
-                  {profileData.badges?.length || 0} badges earned
+                  {badges.length} badges earned
                 </span>
               </div>
 
@@ -907,8 +940,8 @@ export default function ProfilePage() {
                   </p>
                 </div>
               )}
-            </motion.div>
-
+            </motion.div>)}
+            
             <motion.div
               className="backdrop-blur-sm bg-white/5 rounded-2xl p-6 border border-gray-800 shadow-xl mb-14"
               initial={{ opacity: 0, y: 20 }}
