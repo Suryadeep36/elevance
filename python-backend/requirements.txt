@@ -91,3 +91,5 @@ typing_extensions==4.13.2
 tzdata==2025.2
 urllib3==2.4.0
 uv==0.6.14
+fastapi==0.109.2
+uvicorn==0.27.1
