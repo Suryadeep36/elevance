@@ -63,43 +63,32 @@ const mintBadge = async (cluster: string, user: any) => {
     return false;
   }
 
+  if (!(window as any).ethereum) {
+    alert("MetaMask is not installed.");
+    return;
+  }
+
   try {
-    const provider = new ethers.BrowserProvider(window.ethereum);
+    const provider = new ethers.BrowserProvider((window as any).ethereum);
     await provider.send("eth_requestAccounts", []);
     const signer = await provider.getSigner();
     const userAddress = await signer.getAddress();
+
     const skill = metadata.skill;
     const contract = getBadgeContract(signer);
 
-    // Add transaction options
-    const txOptions = {
-      gasLimit: 500000 // Adjust based on your contract's needs
-    };
-
-    try {
-      // Check if badge exists with explicit gas limit
-      const hasBadge = await contract.hasBadge(userAddress, skill, txOptions);
-      console.log("Has badge:", hasBadge);
-      
-      if (!hasBadge) {
-        console.log("Attempting to mint badge...");
-        const tx = await contract.mintBadge(userAddress, skill, txOptions);
-        console.log("Transaction sent:", tx.hash);
-        const receipt = await tx.wait();
-        console.log("Transaction mined:", receipt);
-        return true;
-      } else {
-        alert('You already have this badge!');
-        return false;
-      }
-    } catch (error) {
-      console.error("Contract interaction error:", error);
-      throw error;
+    const hasBadge = await contract.hasBadge(userAddress, skill);
+    if (hasBadge) {
+      alert("Badge already minted.");
+      return;
     }
+
+    await contract.mintBadge(userAddress, skill);
+    alert("Badge minted successfully!");
+
   } catch (error) {
     console.error("Minting failed:", error);
-    alert(`Failed to mint badge: ${error instanceof Error ? error.message : String(error)}`);
-    return false;
+    alert("Failed to mint badge. See console for more info.");
   }
 };
 

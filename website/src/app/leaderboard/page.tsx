@@ -36,14 +36,14 @@ const Leaderboard: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
-  
-  
+
+
   useEffect(() => {
     const fetchBadges = async (userAddress: string): Promise<FetchBadge[]> => {
       const provider = new ethers.BrowserProvider((window as any).ethereum);
       const signer = await provider.getSigner();
       const contract = getBadgeContract(signer);
-  
+
       const newBadges: FetchBadge[] = [];
       const allBadges = ['Web Developer', 'App Developer', 'Machine Learning', 'Cloud Engineer', 'Cybersecurity Engineer'];
       const skillToImageMap: Record<string, string> = {
@@ -53,55 +53,56 @@ const Leaderboard: React.FC = () => {
         "Cloud Engineer": "https://gateway.pinata.cloud/ipfs/bafkreihbfzwzbvo2qp7ra7fq2kk5j6mhxbv3ced5fkebtolnr7binjrb4i",
         "Cybersecurity Engineer": "https://gateway.pinata.cloud/ipfs/bafkreigu7ulweobgswi5z4hi44gjkn42u3j7fi73xh46ppjgfzrclov47q",
       };
-  
+
       for (const badge of allBadges) {
         const hasBadge = await contract.hasBadge(userAddress, badge);
         if (hasBadge) {
           newBadges.push({ name: badge, imgUrl: skillToImageMap[badge] });
         }
       }
-  
+
       return newBadges;
     };
-  
+
     const fetchAllUsersWithBadges = async () => {
       try {
         if (!(window as any).ethereum) {
           console.warn('MetaMask not available');
           return;
         }
-  
+
         const provider = new ethers.BrowserProvider((window as any).ethereum);
         const signer = await provider.getSigner();
         const currentAddress = await signer.getAddress();
-  
+
         if (!currentAddress) {
           console.warn("No wallet address found");
           return;
         }
-  
+
         const response = await axios.get('/api/user/getAll');
         if (response.data.success) {
           const enrichedUsers = [];
-  
+
           for (const user of response.data.allUsers) {
             if (!user.metamaskAddress) continue;
             const badges = await fetchBadges(user.metamaskAddress);
             const clusters = badges.map(badge => badge.name);
             enrichedUsers.push({
-              username: user.name,
+              username: user.username,
               badges: badges.length,
               clusters,
             });
           }
           enrichedUsers.sort((a, b) => b.badges - a.badges);
           setUsers(enrichedUsers);
+          console.log(enrichedUsers)
         }
       } catch (error) {
         console.error("Error fetching users with badges:", error);
       }
     };
-  
+
     fetchAllUsersWithBadges();
   }, []);
 

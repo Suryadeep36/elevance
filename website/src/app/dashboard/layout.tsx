@@ -40,7 +40,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     <div className="min-h-screen flex bg-gradient-to-br from-gray-900 to-gray-950 text-white mt-10">
       {/* Sidebar */}
       <motion.div 
-        className="mt-14 fixed top-0 left-0 h-full bg-gray-900 border-r border-gray-800 z-10 shadow-xl overflow-hidden backdrop-blur-sm bg-opacity-80"
+        className="mt-16 fixed top-0 left-0 h-full bg-gray-900 border-r border-gray-800 z-10 shadow-xl overflow-hidden backdrop-blur-sm bg-opacity-80"
         initial="expanded"
         animate={collapsed ? 'collapsed' : 'expanded'}
         variants={sidebarVariants}
@@ -55,10 +55,10 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 exit={{ opacity: 0 }}
                 className="flex items-center space-x-2"
               >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-600 to-blue-500 flex items-center justify-center">
+                {/* <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-600 to-blue-500 flex items-center justify-center">
                   <Sparkles className="w-5 h-5 text-white" />
                 </div>
-                <span className="font-bold text-lg text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">TalentSync</span>
+                <span className="font-bold text-lg text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">TalentSync</span> */}
               </motion.div>
             )}
 
