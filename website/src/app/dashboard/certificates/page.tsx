@@ -1,13 +1,18 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { FileUpload } from "@/components/ui/file-upload";
-import { X, UploadCloud, Image as ImageIcon, Check, XCircle, Loader2 } from "lucide-react";
+import { X, UploadCloud, Image as ImageIcon, Check, XCircle, Loader2, Download } from "lucide-react";
 import Image from "next/image";
 import axios from "axios";
-import { BrowserProvider } from "ethers"; // Replaces Web3Provider
 import { ethers } from "ethers";
 import { getBadgeContract } from "@/utils/badgeContract";
 import { useAuth, useUser } from "@clerk/nextjs";
+
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
 
 interface CourseResult {
   course_name: string;
@@ -26,101 +31,152 @@ interface VerificationResult {
 const badgeMetadataMap: Record<string, { skill: string; tokenURI: string }> = {
   "Machine Learning": {
     skill: "Machine Learning",
-    tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreibxxlgv4dphmpglmyic35fezeqm5icxvgtl7fxnp3jynr4ricwxzm",
+    tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreih5oo7rilmctthdylxwrtxt7u5cfwhvvw5noeubc52cjbpmiqe2ya",
   },
-  "Web Developer": {
+  "Web Development": {
     skill: "Web Developer",
     tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreid7ynhgat725ymwjx2oijltcyabottskoxeuiwxigwitw6tz2lnli",
   },
-  "App Developer": {
+  "App Development": {
     skill: "App Developer",
     tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreibu5n7fj4wvs6vsl5kzgztr2rj3xufs2kryxxzyqxmeib2vngpw24",
   },
-  "Cybersecurity Engineer": {
+  "Cyber Security": {
     skill: "Cybersecurity Engineer",
     tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreiat3tkr2p5w33vnnqnhqv5hcgwqwdna23mbgukh2v2vrwhdjmjyfm",
   },
-  "Cloud Dev": {
+  "Cloud Computing": {
     skill: "Cloud Engineer",
     tokenURI: "https://gateway.pinata.cloud/ipfs/bafkreigwi7lcc6rrpu4vurf7agztb6vmdqsk556au4xymlxmo3hswgmi24",
   },
 };
 
 const mintBadge = async (cluster: string, user: any) => {
+  if (!window.ethereum) {
+    alert("Please install MetaMask to mint badges!");
+    return false;
+  }
+
   const metadata = badgeMetadataMap[cluster];
   if (!metadata) {
     alert(`No metadata found for cluster: ${cluster}`);
-    return;
+    return false;
   }
 
-  const provider = new ethers.BrowserProvider((window as any).ethereum);
-  await provider.send("eth_requestAccounts", []);
-  const signer = await provider.getSigner();
-  const userAddress = await signer.getAddress();
-
-  const contract = getBadgeContract(signer);
-
   try {
-    console.log(userAddress + " " + cluster)
-    const tx = await contract.mintBadge(userAddress, cluster);
-    const receipt = await tx.wait();
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    const signer = await provider.getSigner();
+    const userAddress = await signer.getAddress();
+    const skill = metadata.skill;
+    const contract = getBadgeContract(signer);
 
-    // Extract BadgeMinted event
-    const event = receipt.logs
-      .map((log : any) => {
-        try {
-          return contract.interface.parseLog(log);
-        } catch (err) {
-          return null;
-        }
-      })
-      .find((parsed : any) => parsed?.name === "BadgeMinted");
+    // Add transaction options
+    const txOptions = {
+      gasLimit: 500000 // Adjust based on your contract's needs
+    };
 
-    if (!event) {
-      console.error("Event not found in tx");
-      return;
-    }
-
-    const tokenId = event.args.tokenId.toString();
-    const tokenURI = event.args.tokenURI;
-    const imageUrl = tokenURI.startsWith('ipfs://')
-      ? `https://gateway.pinata.cloud/ipfs/${tokenURI.replace('ipfs://', '')}`
-      : tokenURI;
-
-  
-    await axios.post('/api/add-badge', {
-      clerk_Id: user?.id,
-      badge: {
-        cluster,
-        imageUrl,
-        tokenId
+    try {
+      // Check if badge exists with explicit gas limit
+      const hasBadge = await contract.hasBadge(userAddress, skill, txOptions);
+      console.log("Has badge:", hasBadge);
+      
+      if (!hasBadge) {
+        console.log("Attempting to mint badge...");
+        const tx = await contract.mintBadge(userAddress, skill, txOptions);
+        console.log("Transaction sent:", tx.hash);
+        const receipt = await tx.wait();
+        console.log("Transaction mined:", receipt);
+        return true;
+      } else {
+        alert('You already have this badge!');
+        return false;
       }
-    });
-    alert('Badge minted and added to user!');
+    } catch (error) {
+      console.error("Contract interaction error:", error);
+      throw error;
+    }
   } catch (error) {
     console.error("Minting failed:", error);
-    alert("Minting failed. Check console.");
+    alert(`Failed to mint badge: ${error instanceof Error ? error.message : String(error)}`);
+    return false;
   }
 };
 
-
-
 export default function Page() {
-  const {isLoaded, user} = useUser();
-  const {isSignedIn} = useAuth();
+  const [hasMetaMask, setHasMetaMask] = useState(false);
+  const [isWalletConnected, setIsWalletConnected] = useState(false);
+  const [walletAddress, setWalletAddress] = useState("");
+  const [contractError, setContractError] = useState<string | null>(null);
+  const { isLoaded, user } = useUser();
+  const { isSignedIn, userId } = useAuth();
   const [username, setUsername] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  
+  const [isMinting, setIsMinting] = useState(false);
 
-  const { userId } = useAuth()
- 
+  useEffect(() => {
+    setHasMetaMask(typeof window.ethereum !== "undefined");
+    
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
+      checkConnectedWallet();
+    }
+
+    return () => {
+      if (window.ethereum) {
+        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (isLoaded && isSignedIn && user?.fullName) {
       setUsername(user.fullName);
     }
   }, [isLoaded, isSignedIn, user]);
+
+  const handleAccountsChanged = (accounts: string[]) => {
+    if (accounts.length === 0) {
+      setIsWalletConnected(false);
+      setWalletAddress("");
+    } else {
+      setWalletAddress(accounts[0]);
+    }
+  };
+
+  const checkConnectedWallet = async () => {
+    if (window.ethereum) {
+      try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const accounts = await provider.send("eth_accounts", []);
+        if (accounts.length > 0) {
+          setIsWalletConnected(true);
+          setWalletAddress(accounts[0]);
+        }
+      } catch (error) {
+        console.error("Error checking connected wallet:", error);
+      }
+    }
+  };
+
+  const connectMetaMask = async () => {
+    if (!hasMetaMask) {
+      window.open("https://metamask.io/download.html", "_blank");
+      return;
+    }
+
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const accounts = await provider.send("eth_requestAccounts", []);
+      setIsWalletConnected(true);
+      setWalletAddress(accounts[0]);
+    } catch (error) {
+      console.error("Failed to connect MetaMask:", error);
+      alert("Failed to connect wallet. Please try again.");
+    }
+  };
 
   const handleFileUpload = (uploadedFiles: File[]) => {
     setFiles(uploadedFiles);
@@ -138,64 +194,55 @@ export default function Page() {
     if (files.length === 0) return;
 
     setIsLoading(true);
+    setContractError(null);
+    
     try {
       const formData = new FormData();
       formData.append("certificate", files[0]);
-      formData.append("name", "Manil");
+      formData.append("name", username);
 
       const response = await axios.post<VerificationResult>(
         "http://localhost:8000/verify-certificate",
         formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
+        { headers: { "Content-Type": "multipart/form-data" } }
       );
-      if (response.data.valid_certificate == true) {
 
-        const clustor = response.data.courses_found[0].cluster;
-        if (response.data.valid_certificate && response.data.platform_verified) {
-          await mintBadge(clustor, user);
-        }
+      if (response.data.valid_certificate) {
         setVerificationResult(response.data);
 
-        const newForm = new FormData()
+        // Save certificate to database
+        const newForm = new FormData();
         newForm.append('file', files[0]);
-        if (!userId) {
-          console.log('user id not found');
-          return;
-        }
-        newForm.append('userId', userId);
-        const urlObjet = await axios.post("/api/certificate", newForm);
-        // Extract the URL from the response
-        const certificateUrl = urlObjet.data?.url?.url;
-        console.log(urlObjet)
-        console.log(certificateUrl)
+        newForm.append('userId', userId || "");
+        const urlResponse = await axios.post("/api/certificate", newForm);
+        const certificateUrl = urlResponse.data?.url?.url;
+        
         await axios.put('/api/user/update', {
-          certificates: [certificateUrl], // Send just the URL string
+          certificates: [certificateUrl],
           clerk_Id: userId
         });
 
+        console.log("updated ");
 
+        // Mint badge if eligible
+        if (response.data.platform_verified && isWalletConnected) {
+          setIsMinting(true);
+          try {
+            const cluster = response.data.courses_found[0].cluster;
+            const success = await mintBadge(cluster, username);
+            if (success) {
+              alert('Badge minted successfully!');
+            }
+          } catch (error) {
+            console.error("Minting error:", error);
+            setContractError("Failed to interact with the badge contract. Please try again.");
+          } finally {
+            setIsMinting(false);
+          }
+        }
+      } else {
+        setVerificationResult(response.data);
       }
-      const newForm = new FormData()
-      newForm.append('file', files[0]);
-      if (!userId) {
-        console.log('user id not found');
-        return;
-      }
-      newForm.append('userId', userId);
-      const urlObjet = await axios.post("/api/certificate", newForm);
-      // Extract the URL from the response
-      const certificateUrl = urlObjet.data?.url?.url;
-      console.log(urlObjet)
-      console.log(certificateUrl)
-      await axios.put('/api/user/update', {
-        certificates: [certificateUrl], // Send just the URL string
-        clerk_Id: userId
-      });
-
     } catch (error) {
       console.error("Verification failed:", error);
       setVerificationResult({ 
@@ -213,6 +260,42 @@ export default function Page() {
 
   return (
     <div style={{ maxHeight: 'calc(100vh - 100px)' }} className="scroll-container overflow-auto w-full max-w-6xl mx-auto min-h-screen flex flex-col p-6 gap-6">
+      {/* Wallet Connection Status */}
+      <div className="absolute top-4 left-4">
+        {hasMetaMask ? (
+          isWalletConnected ? (
+            <div className="flex items-center gap-2 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 px-4 py-2 rounded-full">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span className="text-sm">
+                {`${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}`}
+              </span>
+            </div>
+          ) : (
+            <button
+              onClick={connectMetaMask}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-full transition"
+            >
+              <Image 
+                src="/metamask.svg" 
+                alt="MetaMask" 
+                width={20} 
+                height={20} 
+                className="w-5 h-5"
+              />
+              Connect Wallet
+            </button>
+          )
+        ) : (
+          <button
+            onClick={() => window.open("https://metamask.io/download.html", "_blank")}
+            className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-full transition"
+          >
+            <Download size={16} />
+            Install MetaMask
+          </button>
+        )}
+      </div>
+
       {/* Main Content Area */}
       <div className="flex flex-1 gap-6">
         {/* Preview Section - Left Side */}
@@ -317,6 +400,14 @@ export default function Page() {
                   {verificationResult.valid_certificate ? 'Valid' : 'Invalid'}
                 </span>
               </div>
+              <div className="flex justify-between">
+                <span className="text-neutral-500">Wallet Connected:</span>
+                <span className={`font-medium ${
+                  isWalletConnected ? 'text-green-500' : 'text-yellow-500'
+                }`}>
+                  {isWalletConnected ? 'Connected' : 'Not Connected'}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -330,6 +421,12 @@ export default function Page() {
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {contractError && (
+            <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 rounded text-red-600 dark:text-red-300">
+              {contractError}
             </div>
           )}
 
@@ -347,16 +444,58 @@ export default function Page() {
               </div>
             </div>
           )}
+
+          {verificationResult.valid_certificate && verificationResult.platform_verified && !isWalletConnected && (
+            <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded text-yellow-700 dark:text-yellow-300">
+              <p>Connect your wallet to mint a badge for this certificate!</p>
+              <button
+                onClick={connectMetaMask}
+                className="mt-2 flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition"
+              >
+                {hasMetaMask ? (
+                  <>
+                    <Image 
+                      src="/metamask.svg" 
+                      alt="MetaMask" 
+                      width={16} 
+                      height={16} 
+                    />
+                    Connect MetaMask
+                  </>
+                ) : (
+                  <>
+                    <Download size={16} />
+                    Install MetaMask
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Verify Button - Bottom Right */}
-      <div className="fixed bottom-6 right-6">
+      {/* Action Buttons - Bottom Right */}
+      <div className="fixed bottom-6 right-6 flex gap-4">
+        {!isWalletConnected && hasMetaMask && (
+          <button
+            onClick={connectMetaMask}
+            className="flex items-center gap-2 px-6 py-3 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-lg transition-all"
+          >
+            <Image 
+              src="/metamask.svg" 
+              alt="MetaMask" 
+              width={20} 
+              height={20} 
+            />
+            Connect Wallet
+          </button>
+        )}
+
         <button
           onClick={verifyCertificate}
-          disabled={files.length === 0 || isLoading}
+          disabled={files.length === 0 || isLoading || isMinting}
           className={`flex items-center gap-2 px-6 py-3 rounded-full text-white font-medium shadow-lg transition-all
-            ${files.length > 0 && !isLoading
+            ${files.length > 0 && !isLoading && !isMinting
               ? 'bg-green-600 hover:bg-green-700 hover:shadow-xl transform hover:-translate-y-1'
               : 'bg-neutral-400 dark:bg-neutral-700 cursor-not-allowed'
             }`}
@@ -366,6 +505,11 @@ export default function Page() {
               <Loader2 className="animate-spin" size={20} />
               Verifying...
             </>
+          ) : isMinting ? (
+            <>
+              <Loader2 className="animate-spin" size={20} />
+              Minting...
+            </>
           ) : (
             <>
               <Check size={20} />
@@ -374,6 +518,21 @@ export default function Page() {
           )}
         </button>
       </div>
+
+      {/* MetaMask Required Notice */}
+      {!hasMetaMask && (
+        <div className="fixed bottom-4 left-[20%] p-4 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg text-yellow-800 dark:text-yellow-200 max-w-md">
+          <p className="font-medium">MetaMask Required</p>
+          <p>To mint badges for your certificates, you need to install the MetaMask wallet extension.</p>
+          <button 
+            onClick={() => window.open("https://metamask.io/download.html", "_blank")}
+            className="mt-2 flex items-center gap-2 text-blue-600 dark:text-blue-400 underline"
+          >
+            <Download size={16} />
+            Download MetaMask
+          </button>
+        </div>
+      )}
     </div>
   );
 }

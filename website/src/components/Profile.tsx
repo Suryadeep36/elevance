@@ -4,6 +4,8 @@ import { User, Briefcase, Search, Code, X, Award, BookOpen, Sparkles, Zap, Calen
 import { useState, useEffect } from "react";
 import { useUser, useAuth } from "@clerk/nextjs";
 import { toast } from "react-hot-toast";
+import { ethers } from "ethers";
+import { getBadgeContract } from "@/utils/badgeContract";
 
 interface Badge {
   _id: string;
@@ -31,6 +33,12 @@ interface ProfileData {
   certificates?: string[];
   badges?: Badge[];
   atsScore?: number;
+  metamaskAddress: string;
+}
+
+interface FetchBadge {
+  name: string;
+  imgUrl: string
 }
 
 const defaultProfileData: ProfileData = {
@@ -50,6 +58,7 @@ const defaultProfileData: ProfileData = {
     { id: 2, title: "UX Designer", company: "Creative Studio", location: "New York" },
   ],
   skills: [],
+  metamaskAddress: "not added"
 };
 
 export default function ProfilePage() {
@@ -60,6 +69,7 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [badges, setBadges] = useState<FetchBadge[]>([]);
 
   // For role editing dropdown
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
@@ -70,11 +80,12 @@ export default function ProfilePage() {
   // Fetch user data from MongoDB API
   const fetchUserData = async () => {
     if (!isLoaded || !isSignedIn || !user?.id) return;
-    console.log(user.id)
+    // console.log(user.id)
     try {
       setIsLoading(true);
       // Fix the API endpoint call
       const response = await axios.get(`/api/user/${user.id}`);
+      // console.log(response.data , " aftre api call")
 
       if (response.data && response.data.user) {
         // Transform the MongoDB data to match our component's data structure
@@ -120,9 +131,86 @@ export default function ProfilePage() {
     }
   };
 
+  const fetchBadges = async () => {
+  try {
+    // Check if MetaMask is installed
+    if (!window.ethereum) {
+      throw new Error("MetaMask is not installed");
+    }
+
+    // Connect to MetaMask and get user address
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const accounts = await provider.send("eth_requestAccounts", []);
+    if (accounts.length === 0) {
+      throw new Error("No accounts found");
+    }
+    // console.log(accounts)
+    const signer = await provider.getSigner();
+    const userAddress = await signer.getAddress();
+    // console.log(signer, " and " ,userAddress)
+    // Save user data
+    const responseData = await saveUserData({
+      metamaskAddress: userAddress
+    }).catch(error => {
+      console.error("Failed to save user data:", error);
+      return null;
+    });
+
+    // console.log(responseData ,  "got it")
+
+    if (responseData) {
+      setProfileData((prev) => ({
+        ...prev,
+        metamaskAddress: userAddress
+      }));
+    }
+
+    // Fetch badges
+    const contract = getBadgeContract(signer);
+    // console.log("after contract" , contract)
+    const newBadges: FetchBadge[] = [];
+    const allBadges = [
+      'Web Developer',
+      'App Developer',
+      'Machine Learning',
+      'Cloud Engineer',
+      'Cybersecurity Engineer'
+    ];
+
+    const skillToImageMap: Record<string, string> = {
+      "Web Developer": "https://gateway.pinata.cloud/ipfs/bafybeicyd3lbzjrh7ty6ywgejwhsmfoafajwg2jhfn66cnd456uaioaae4",
+      "App Developer": "https://gateway.pinata.cloud/ipfs/bafkreib7scz6va5kldas2yvudtedizua4avp3axlssgxisbff5czk6cbmm",
+      "Machine Learning": "https://gateway.pinata.cloud/ipfs/bafkreif5rb6xsxhdrqi2afwbjvj3jhf4nyn65yehekmgsccu435g6yxidi",
+      "Cloud Engineer": "https://gateway.pinata.cloud/ipfs/bafkreihbfzwzbvo2qp7ra7fq2kk5j6mhxbv3ced5fkebtolnr7binjrb4i",
+      "Cybersecurity Engineer": "https://gateway.pinata.cloud/ipfs/bafkreigu7ulweobgswi5z4hi44gjkn42u3j7fi73xh46ppjgfzrclov47q",
+    };
+
+    // Check each badge
+    for (let i = 0; i < allBadges.length; i++) {
+      try {
+        const hasBadge = await contract.hasBadge(userAddress, allBadges[i]);
+        if (hasBadge) {
+          newBadges.push({
+            name: allBadges[i],
+            imgUrl: skillToImageMap[allBadges[i]]
+          });
+        }
+      } catch (error) {
+        console.log(`Error checking badge ${allBadges[i]}:`, error);
+      }
+    }
+
+    setBadges(newBadges);
+    
+  } catch (error) {
+    console.log("Error in fetchBadges:", error);
+  }
+};
+
   useEffect(() => {
     if (isSignedIn && isLoaded) {
       fetchUserData();
+      fetchBadges();
     }
   }, [isSignedIn, isLoaded, user?.id]);
 
@@ -399,7 +487,7 @@ export default function ProfilePage() {
 
       // Get the cloudinary URL from the response
       const resumeUrl = uploadResponse.data.url;
-      console.log("Resume uploaded to:", resumeUrl);
+      // console.log("Resume uploaded to:", resumeUrl);
 
       // Extract skills from resume using the Python model
       try {
@@ -420,7 +508,7 @@ export default function ProfilePage() {
             : [];
 
           // Log extracted skills
-          console.log("Extracted skills:", newSkills);
+          // console.log("Extracted skills:", newSkills);
 
           // Combine existing and new skills, removing duplicates
           const updatedSkills = [...new Set([...currentSkills, ...newSkills])];
@@ -428,7 +516,7 @@ export default function ProfilePage() {
           // Save resume URL and skills to MongoDB
           const saveResult = await saveUserData({
             resume: resumeUrl,
-            skills: updatedSkills,
+            skills: updatedSkills
           });
 
           if (saveResult) {
@@ -604,7 +692,7 @@ export default function ProfilePage() {
                     </div>
                   )}
 
-                  <div className="absolute bottom-3 right-[42%] w-5 h-5 bg-green-500 rounded-full border-2 border-gray-800 shadow-lg"></div>
+                  
 
                   <div className="text-center w-full">
                     {profileData.name ? (
@@ -824,11 +912,11 @@ export default function ProfilePage() {
                 </span>
               </div>
 
-              {profileData.badges && profileData.badges.length > 0 ? (
+              {badges && badges.length > 0 ? (
                 <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {profileData.badges.map((badge, index) => (
+                  {badges.map((badge, index) => (
                     <motion.div
-                      key={badge._id}
+                      key={index}
                       className="group relative"
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -838,23 +926,14 @@ export default function ProfilePage() {
                       <div className="flex flex-col items-center p-4 rounded-xl bg-gradient-to-br from-gray-800/80 to-gray-900/80 border border-gray-700 hover:border-purple-500/50 transition-all duration-300 backdrop-blur-sm group-hover:shadow-md group-hover:shadow-purple-500/20">
                         <div className="w-16 h-16 mb-3 relative">
                           <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-500/20 to-blue-500/20 animate-pulse"></div>
-                          <img 
-                            src={'/bedge.png'} 
-                            alt={badge.cluster} 
-                            className="w-full h-full scale-230 object-contain relative z-10" 
+                          <img
+                            src={badge.imgUrl}
+                            alt={badge.name}
+                            className="w-full h-full scale-230 object-contain relative z-10"
                             onError={(e) => {
                               (e.target as HTMLImageElement).src = '/badge-placeholder.png'; // Fallback image
                             }}
                           />
-                        </div>
-                        {/* <h4 className="text-sm font-medium text-center text-white group-hover:text-purple-300 transition-colors">
-                          {badge.cluster}
-                        </h4> */}
-                        <div className="mt-2 text-xs text-center text-gray-400">
-                          Minted: {new Date(badge.mintedAt).toLocaleDateString()}
-                        </div>
-                        <div className="absolute -top-2 -right-2 bg-purple-600 text-xs rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                          #{badge.tokenId}
                         </div>
                       </div>
                     </motion.div>
@@ -937,7 +1016,7 @@ export default function ProfilePage() {
                       </motion.div>
                     ))}
                   </div>
-                    
+
                 </motion.div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-8 border border-dashed border-gray-700 rounded-xl bg-gray-800/30">

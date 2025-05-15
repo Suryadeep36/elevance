@@ -4,13 +4,12 @@ import 'leaflet/dist/leaflet.css';
 interface UserMapProps {
   users: any[];
   selectedSkill: string;
-  selectedCompany: string;
   selectedUser: any;
   setSelectedUser: (user: any) => void;
   viewMode: 'simple' | '3d';
 }
 
-const UserMap = ({ users, selectedSkill, selectedCompany, selectedUser, setSelectedUser, viewMode }: UserMapProps) => {
+const UserMap = ({ users, selectedSkill,  selectedUser, setSelectedUser, viewMode }: UserMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [mapInitialized, setMapInitialized] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
@@ -144,8 +143,7 @@ const UserMap = ({ users, selectedSkill, selectedCompany, selectedUser, setSelec
         // Add markers for filtered users
         const filteredUsers = users.filter(user => {
           const matchesSkill = !selectedSkill || user.skills.includes(selectedSkill);
-          const matchesCompany = !selectedCompany || user.company === selectedCompany;
-          return matchesSkill && matchesCompany;
+          return matchesSkill;
         });
         
         const markers = filteredUsers.map(user => {
@@ -178,7 +176,6 @@ const UserMap = ({ users, selectedSkill, selectedCompany, selectedUser, setSelec
               <div class="p-2">
                 <div class="font-bold text-purple-600 mb-1">${user.name}</div>
                 <div class="text-sm">${user.title}</div>
-                <div class="text-xs text-gray-700">${user.company}</div>
               </div>
             `)
             .on('click', () => {
@@ -245,7 +242,7 @@ const UserMap = ({ users, selectedSkill, selectedCompany, selectedUser, setSelec
     
     // Initialize map
     initializeMap();
-  }, [users, selectedSkill, selectedCompany, selectedUser, setSelectedUser, viewMode]);
+  }, [users, selectedSkill, selectedUser, setSelectedUser, viewMode]);
 
   return (
     <>

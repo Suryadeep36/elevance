@@ -7,6 +7,7 @@ export async function PUT(req: Request) {
     await dbConnect();
     
     const data = await req.json();
+    console.log("data is ", data);
     
     if (!data.clerk_Id) {
       return NextResponse.json({ error: 'Clerk ID is required' }, { status: 400 });

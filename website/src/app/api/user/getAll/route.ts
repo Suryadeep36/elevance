@@ -6,22 +6,13 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   request: NextRequest,
-  context: { params: { clerk_id: string } }
 ) {
   try {
     await dbConnect();
-    const { clerk_id } = context.params;
-    console.log("id is ", clerk_id , " and ")
-    if (!clerk_id) {
-      return NextResponse.json(
-        { error: 'Invalid clerk ID parameter' },
-        { status: 400 }
-      );
-    }
+    
+    const allUsers = await UserModel.find({});
 
-    const user = await UserModel.findOne({ clerk_Id: clerk_id });
-    console.log("user ", user)
-    if (!user) {
+    if (!allUsers) {
       return NextResponse.json(
         { message: 'User not found' },
         { status: 404 }
@@ -29,7 +20,7 @@ export async function GET(
     }
 
     return NextResponse.json(
-      { success: true, user },
+      { success: true, allUsers },
       { status: 200 }
     );
   } catch (error) {

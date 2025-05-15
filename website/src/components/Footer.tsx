@@ -48,9 +48,9 @@ function Footer() {
               <li>
                 <Link href="/dashboard" className="text-gray-400 hover:text-blue-400 transition-colors">Dashboard</Link>
               </li>
-              {/* <li>
-                <Link href="/about" className="text-gray-400 hover:text-blue-400 transition-colors">About Us</Link>
-              </li> */}
+              <li>
+                <Link href="/leaderboard" className="text-gray-400 hover:text-blue-400 transition-colors">Leaderboard</Link>
+              </li>
             </ul>
           </div>
 

@@ -8,6 +8,7 @@ import { TechLoader } from "@/components/TechLoader";
 import { useAuth } from '@clerk/nextjs';
 import Link from "next/link";
 import { useUser } from '@clerk/nextjs';
+import axios from "axios";
 
 export default function Home() {
 
@@ -16,10 +17,20 @@ export default function Home() {
 
   useEffect(() => {
     const createUserIfNotExists = async () => {
-      if (!isSignedIn || !user) return;
+      console.log(isSignedIn , " " , user ,  " " , isLoaded)
+      if (!user || !isLoaded) return;
+
+      if(isSignedIn){
+        const api = await axios.get(`/api/user/${user.id}`);
+        const data = api.data;
+        if(data.user){
+          return;
+        }
+      }
 
       try {
-        const res = await fetch('/api/user/create', {
+        console.log("in try")
+        const res = await fetch('/api/sign-up', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
