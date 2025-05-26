@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { FileUpload } from "@/components/ui/file-upload";
-import { X, UploadCloud, Image as ImageIcon, Check, XCircle, Loader2, Download } from "lucide-react";
+import { X, Image as ImageIcon, Check, XCircle, Loader2, Download } from "lucide-react";
 import Image from "next/image";
 import axios from "axios";
 import { ethers } from "ethers";
